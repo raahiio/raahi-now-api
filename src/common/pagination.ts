@@ -9,7 +9,18 @@ export const DEFAULT_LIMIT = 20;
 export const MAX_LIMIT = 50;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/;
+const ISO_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,6})?Z$/;
+
+/** Explicit field-range check; Date.parse rolls impossible dates over and toISOString would drop microseconds. */
+function isValidInstant(t: string): boolean {
+  const m = ISO_INSTANT.exec(t);
+  if (!m) return false;
+  const [year, month, day, hour, minute, second] = m.slice(1, 7).map(Number) as [number, number, number, number, number, number];
+  if (year < 1 || month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) return false;
+  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] as number;
+  return day >= 1 && day <= days;
+}
 
 export function encodeCursor(v: Cursor): string {
   return Buffer.from(JSON.stringify({ t: v.t, id: v.id }), 'utf8').toString('base64url');
@@ -27,7 +38,7 @@ export function decodeCursor(c: string): Cursor {
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw bad();
   const { t, id } = parsed as Record<string, unknown>;
-  if (typeof t !== 'string' || !ISO_INSTANT.test(t) || Number.isNaN(Date.parse(t))) throw bad();
+  if (typeof t !== 'string' || !isValidInstant(t)) throw bad();
   if (typeof id !== 'string' || !UUID.test(id)) throw bad();
   return { t, id };
 }

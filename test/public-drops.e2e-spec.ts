@@ -163,6 +163,9 @@ describe('Public Drops (e2e)', () => {
     const l = await t.http.get('/v1/drops?limit=51').expect(422);
     expect(l.body).toMatchObject({ code: 'limit.range', field: 'limit', message: 'Use a limit from 1 to 50.' });
     await t.http.get('/v1/drops?limit=0').expect(422);
+    const impossible = Buffer.from(JSON.stringify({ t: '2026-02-30T00:00:00Z', id: uuidv7() })).toString('base64url');
+    const d = await t.http.get(`/v1/drops?cursor=${impossible}`).expect(422);
+    expect(d.body).toMatchObject({ code: 'cursor.invalid', field: 'cursor' });
   });
 
   it('anonymous responses are public-cacheable; authenticated ones are private, no-store', async () => {
