@@ -219,7 +219,7 @@ export class DropsService {
       .orderBy('drops.created_at', 'desc')
       .orderBy('drops.id', 'desc')
       .execute();
-    return rows.map(toOwnerView);
+    return rows.map((r) => toOwnerView(r));
   }
 
   async getMine(me: CurrentUser, id: string): Promise<OwnerDropView> {

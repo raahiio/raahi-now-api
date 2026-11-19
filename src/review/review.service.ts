@@ -5,7 +5,8 @@ import { AppError } from '../common/errors/app-error.js';
 import type { DropsTable, DropStatus, EventStatus, ReviewKind, ReviewState, Schema } from '../db/schema.js';
 import { DB } from '../db/tokens.js';
 import { nextDropStatus } from '../drops/drop-state.js';
-import { ownerDropQuery, toOwnerView } from '../drops/owner-view.js';
+import { serializeDrop } from '../drops/drop.serializer.js';
+import { ownerDropQuery } from '../drops/owner-view.js';
 import { OutboxService } from '../outbox/outbox.service.js';
 
 type Trx = Transaction<Schema>;
@@ -60,7 +61,7 @@ export class ReviewService {
     const eventIds = rows.filter((r) => r.kind === 'event').map((r) => r.ref_id);
     const drops = new Map(
       dropIds.length
-        ? (await ownerDropQuery(this.db).where('drops.id', 'in', dropIds).execute()).map((d) => [d.id, toOwnerView(d)] as const)
+        ? (await ownerDropQuery(this.db).where('drops.id', 'in', dropIds).execute()).map((d) => [d.id, serializeDrop(d, 'reviewer', new Date())] as const)
         : [],
     );
     const events = new Map(
