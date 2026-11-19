@@ -2,10 +2,12 @@ import type { INestApplication, ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent.js';
+import { IdTokenVerifier } from '../../src/auth/id-token-verifier.js';
 import { AppModule } from '../../src/app.module.js';
 import { ENV } from '../../src/config/config.module.js';
 import { loadEnv, type Env } from '../../src/config/env.js';
 import { configureApp } from '../../src/configure-app.js';
+import { FakeVerifier } from './fake-verifier.js';
 import { testDatabaseUrl, testPublicDatabaseUrl } from './urls.js';
 
 export interface TestApp {
@@ -42,9 +44,13 @@ export async function createTestApp(
     ...overrides,
   });
 
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule, ...(options.imports ?? [])] })
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule, ...(options.imports ?? [])],
+  })
     .overrideProvider(ENV)
     .useValue(env)
+    .overrideProvider(IdTokenVerifier)
+    .useValue(new FakeVerifier())
     .compile();
 
   const app = moduleRef.createNestApplication();
