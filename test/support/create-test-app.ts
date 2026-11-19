@@ -6,6 +6,7 @@ import { AppModule } from '../../src/app.module.js';
 import { ENV } from '../../src/config/config.module.js';
 import { loadEnv, type Env } from '../../src/config/env.js';
 import { configureApp } from '../../src/configure-app.js';
+import { testDatabaseUrl, testPublicDatabaseUrl } from './urls.js';
 
 export interface TestApp {
   app: INestApplication;
@@ -26,11 +27,12 @@ const FIXED_TEST_ENV: Record<string, string> = {
 };
 
 export async function createTestApp(overrides: Record<string, string | undefined> = {}): Promise<TestApp> {
-  const dbUrl = process.env.TEST_DATABASE_URL;
-  if (!dbUrl) throw new Error('TEST_DATABASE_URL is required to run e2e tests');
-
-  // DATABASE_PUBLIC_URL points at the same database for now; Task 2 switches it to the restricted role.
-  const env = loadEnv({ ...FIXED_TEST_ENV, DATABASE_URL: dbUrl, DATABASE_PUBLIC_URL: dbUrl, ...overrides });
+  const env = loadEnv({
+    ...FIXED_TEST_ENV,
+    DATABASE_URL: testDatabaseUrl(),
+    DATABASE_PUBLIC_URL: testPublicDatabaseUrl(),
+    ...overrides,
+  });
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(ENV)
