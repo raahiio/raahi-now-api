@@ -1,0 +1,45 @@
+import type { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import type TestAgent from 'supertest/lib/agent.js';
+import { AppModule } from '../../src/app.module.js';
+import { ENV } from '../../src/config/config.module.js';
+import { loadEnv, type Env } from '../../src/config/env.js';
+import { configureApp } from '../../src/configure-app.js';
+
+export interface TestApp {
+  app: INestApplication;
+  http: TestAgent;
+  env: Env;
+}
+
+const FIXED_TEST_ENV: Record<string, string> = {
+  NODE_ENV: 'test',
+  S3_BUCKET: 'raahi-test-bucket',
+  S3_REGION: 'ap-south-1',
+  SES_FROM: 'no-reply@raahi.test',
+  CLAIM_CODE_SECRET: 'test-claim-code-secret-0123456789abcdef',
+  MANAGE_TOKEN_SECRET: 'test-manage-token-secret-0123456789abcdef',
+  DEVICE_HASH_SALT: 'test-device-hash-salt',
+  FIREBASE_PROJECT_ID: 'raahi-test',
+  JOBS_ENABLED: 'false',
+};
+
+export async function createTestApp(overrides: Record<string, string | undefined> = {}): Promise<TestApp> {
+  const dbUrl = process.env.TEST_DATABASE_URL;
+  if (!dbUrl) throw new Error('TEST_DATABASE_URL is required to run e2e tests');
+
+  // DATABASE_PUBLIC_URL points at the same database for now; Task 2 switches it to the restricted role.
+  const env = loadEnv({ ...FIXED_TEST_ENV, DATABASE_URL: dbUrl, DATABASE_PUBLIC_URL: dbUrl, ...overrides });
+
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(ENV)
+    .useValue(env)
+    .compile();
+
+  const app = moduleRef.createNestApplication();
+  configureApp(app);
+  await app.init();
+
+  return { app, http: request(app.getHttpServer()), env };
+}
