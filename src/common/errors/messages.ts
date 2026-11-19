@@ -70,11 +70,10 @@ const SOCIALS_INVALID = 'Enter the handle without spaces or symbols.';
 const FALLBACK = 'Check this value.';
 
 function template(code: string): string {
-  const exact = MESSAGES[code];
-  if (exact !== undefined) return exact;
+  if (Object.hasOwn(MESSAGES, code)) return MESSAGES[code] as string;
   if (/^socials\.[^.]+\.invalid$/.test(code)) return SOCIALS_INVALID;
   const suffix = code.slice(code.lastIndexOf('.') + 1);
-  return code.includes('.') ? (GENERIC_BY_SUFFIX[suffix] ?? FALLBACK) : FALLBACK;
+  return code.includes('.') ? (Object.hasOwn(GENERIC_BY_SUFFIX, suffix) ? (GENERIC_BY_SUFFIX[suffix] as string) : FALLBACK) : FALLBACK;
 }
 
 /** Resolve a code to its message, filling `{placeholders}` from vars. */

@@ -42,6 +42,12 @@ describe('messageFor', () => {
     expect(messageFor('totally.unmapped_code')).toBe('Check this value.');
   });
 
+  it('ignores prototype keys', () => {
+    expect(messageFor('constructor')).toBe('Check this value.');
+    expect(messageFor('x.constructor')).toBe('Check this value.');
+    expect(messageFor('toString')).toBe('Check this value.');
+  });
+
   it('never leaves a literal placeholder', () => {
     expect(messageFor('area.too_short')).not.toMatch(/[{}]/);
     expect(messageFor('event.guest_submitted')).not.toMatch(/[{}]/);

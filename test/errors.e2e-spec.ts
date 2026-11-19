@@ -83,6 +83,16 @@ describe('Error model (e2e)', () => {
     expect(typeof res.body.requestId).toBe('string');
   });
 
+  it('reports a missing title as required, not too_long', async () => {
+    const res = await t.http.post('/v1/__test/validate').send({}).expect(422);
+    expect(res.body.errors).toEqual([{ code: 'title.required', field: 'title', message: 'This is needed.' }]);
+  });
+
+  it('reports a wrongly typed title as required', async () => {
+    const res = await t.http.post('/v1/__test/validate').send({ title: 123 }).expect(422);
+    expect(res.body.errors).toEqual([{ code: 'title.required', field: 'title', message: 'This is needed.' }]);
+  });
+
   it('passes min/max from constraints into messages', async () => {
     const res = await t.http.post('/v1/__test/area').send({ area: 'a', seats: 9 }).expect(422);
     const byField = Object.fromEntries(res.body.errors.map((e: { field: string }) => [e.field, e]));

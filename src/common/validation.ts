@@ -32,6 +32,31 @@ function boundsFor(target: object | undefined, property: string): MessageVars {
   return vars;
 }
 
+/**
+ * class-validator reports constraints in reverse decorator order, so keys[0] is arbitrary.
+ * Rule: a presence/type constraint wins over length/range ones (a missing or wrongly typed
+ * value is "required", not "too long"); otherwise the first-declared decorator wins, which
+ * is the last key of the reversed list.
+ */
+const PRESENCE_TYPE_KEYS = new Set([
+  'isDefined',
+  'isNotEmpty',
+  'isString',
+  'isInt',
+  'isNumber',
+  'isBoolean',
+  'isIn',
+  'isEnum',
+  'isArray',
+  'isObject',
+  'isDateString',
+  'isUUID',
+]);
+
+function pickConstraintKey(keys: string[]): string {
+  return keys.find((k) => PRESENCE_TYPE_KEYS.has(k)) ?? (keys[keys.length - 1] as string);
+}
+
 function collect(errors: ValidationError[], prefix: string, out: ValidationIssue[]): void {
   for (const error of errors) {
     const field = prefix ? `${prefix}.${error.property}` : error.property;
@@ -42,7 +67,7 @@ function collect(errors: ValidationError[], prefix: string, out: ValidationIssue
       if (keys.includes('whitelistValidation')) {
         code = 'field.unknown';
       } else {
-        const text = constraints[keys[0] as string] as string;
+        const text = constraints[pickConstraintKey(keys)] as string;
         code = CODE_SHAPE.test(text) ? text : `${error.property}.invalid`;
       }
       out.push({ code, field, message: messageFor(code, boundsFor(error.target, error.property)) });
@@ -60,6 +85,13 @@ export function createValidationPipe(): ValidationPipe {
     exceptionFactory: (errors) => {
       const issues: ValidationIssue[] = [];
       collect(errors, '', issues);
+      if (issues.length === 0) {
+        // Never answer 422 with an empty list.
+        const fallback = errors.length ? errors.map((e) => e.property) : [''];
+        for (const field of fallback) {
+          issues.push({ code: 'bad_request', field, message: messageFor('bad_request') });
+        }
+      }
       return new ValidationFailedError(issues);
     },
   });
