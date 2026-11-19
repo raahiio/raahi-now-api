@@ -6,6 +6,7 @@ import { DropsModule } from './drops/drops.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MarketsModule } from './markets/markets.module.js';
 import { MediaModule } from './media/media.module.js';
+import { ReviewModule } from './review/review.module.js';
 import { MeModule } from './me/me.module.js';
 
 @Module({
@@ -18,6 +19,7 @@ import { MeModule } from './me/me.module.js';
     MeModule,
     MediaModule,
     DropsModule,
+    ReviewModule,
   ],
 })
 export class AppModule {}

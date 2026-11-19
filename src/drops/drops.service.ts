@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { type Kysely, type Selectable, sql, type Transaction, type Updateable } from 'kysely';
+import { type Kysely, sql, type Transaction, type Updateable } from 'kysely';
 import { uuidv7 } from 'uuidv7';
 import type { CurrentUser } from '../auth/current-user.decorator.js';
 import { AppError, ValidationFailedError, type ValidationIssue } from '../common/errors/app-error.js';
@@ -10,6 +10,7 @@ import type { DropPrivateTable, DropsTable, Schema } from '../db/schema.js';
 import { MarketsService } from '../markets/markets.service.js';
 import { OutboxService } from '../outbox/outbox.service.js';
 import { ReviewService } from '../review/review.service.js';
+import { type OwnerDropView, ownerDropQuery, toOwnerView } from './owner-view.js';
 import { type DropAction, type DropStatus, nextDropStatus } from './drop-state.js';
 import type { CreateDropDto } from './dto/create-drop.dto.js';
 import type { UpdateDropDto } from './dto/update-drop.dto.js';
@@ -23,43 +24,12 @@ const TEXT_FIELDS = new Set(['title', 'whyNow', 'perfectFor', 'bestTime', 'watch
 
 type Trx = Transaction<Schema>;
 type Executor = Kysely<Schema> | Trx;
-type OwnerRow = Selectable<DropsTable> &
-  Pick<Selectable<DropPrivateTable>, 'exact_place' | 'meet_detail'> & { market_city: string; market_tz: string };
 
 const issue = (code: string, field: string, vars = {}): ValidationIssue => ({
   code,
   field,
   message: messageFor(code, vars),
 });
-
-/** The owner's view of a Drop, with the private fields. (Task 11 moves this into serializeDrop.) */
-function toOwnerView(r: OwnerRow) {
-  return {
-    id: r.id,
-    title: r.title,
-    whyNow: r.why_now,
-    perfectFor: r.perfect_for,
-    cost: { minUsd: r.cost_min_usd, maxUsd: r.cost_max_usd },
-    timeMinutes: r.time_minutes,
-    bestTime: r.best_time,
-    watchOut: r.watch_out,
-    photo: { mediaId: r.photo_media_id, isStandIn: r.photo_is_stand_in },
-    market: { id: r.market_id, city: r.market_city, tz: r.market_tz },
-    fuzzyArea: r.fuzzy_area,
-    unlockPriceCredits: r.unlock_price_minor / 100,
-    unlocksPerDay: r.unlock_cap,
-    unlocksLeft: Math.max(r.unlock_cap - r.unlocks_used, 0),
-    status: r.status,
-    expiresAt: r.expires_at ? r.expires_at.toISOString() : null,
-    windowHours: r.window_hours,
-    exactPlace: r.exact_place,
-    meetDetail: r.meet_detail,
-    createdAt: r.created_at.toISOString(),
-    updatedAt: r.updated_at.toISOString(),
-  };
-}
-
-export type OwnerDropView = ReturnType<typeof toOwnerView>;
 
 @Injectable()
 export class DropsService {
@@ -299,12 +269,7 @@ export class DropsService {
   }
 
   private ownerQuery(db: Executor) {
-    return db
-      .selectFrom('drops')
-      .innerJoin('drop_private', 'drop_private.drop_id', 'drops.id')
-      .innerJoin('markets', 'markets.id', 'drops.market_id')
-      .selectAll('drops')
-      .select(['drop_private.exact_place', 'drop_private.meet_detail', 'markets.city as market_city', 'markets.tz as market_tz']);
+    return ownerDropQuery(db);
   }
 
   private async view(db: Executor, id: string): Promise<OwnerDropView> {

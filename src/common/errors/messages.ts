@@ -36,6 +36,7 @@ export const MESSAGES: Record<string, string> = {
   'drop.field_locked': "This can't be changed while the Drop is live. End it and create a new one.",
   'drop.cap_lower': 'The daily limit can only go up while a Drop is live.',
   'drop.local_required': 'Only verified locals can post Drops.',
+  'event.invalid_transition': "That can't be done to this event right now.",
   'event.not_editable': "This event can't be changed any more.",
   'review.reason_required': 'Add a reason of at least 5 characters so the poster knows why.',
   'review.not_pending': 'This item has already been reviewed.',
