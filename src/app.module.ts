@@ -4,6 +4,7 @@ import { ConfigModule } from './config/config.module.js';
 import { DbModule } from './db/db.module.js';
 import { HealthModule } from './health/health.module.js';
 import { MarketsModule } from './markets/markets.module.js';
+import { MediaModule } from './media/media.module.js';
 import { MeModule } from './me/me.module.js';
 
 @Module({
@@ -14,6 +15,7 @@ import { MeModule } from './me/me.module.js';
     HealthModule,
     MarketsModule,
     MeModule,
+    MediaModule,
   ],
 })
 export class AppModule {}

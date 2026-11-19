@@ -53,6 +53,7 @@ export const MESSAGES: Record<string, string> = {
   not_found: "We couldn't find that.",
   bad_request: "We couldn't read that request.",
   'field.unknown': "This field isn't allowed.",
+  'media.not_pending': 'This upload has already been processed.',
   'device.required': 'Add the X-Device-Id header to post as a guest.',
 };
 

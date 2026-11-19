@@ -7,13 +7,16 @@ import { AppModule } from '../../src/app.module.js';
 import { ENV } from '../../src/config/config.module.js';
 import { loadEnv, type Env } from '../../src/config/env.js';
 import { configureApp } from '../../src/configure-app.js';
+import { ObjectStorage } from '../../src/media/object-storage.js';
 import { FakeVerifier } from './fake-verifier.js';
+import { MemoryStorage } from './memory-storage.js';
 import { testDatabaseUrl, testPublicDatabaseUrl } from './urls.js';
 
 export interface TestApp {
   app: INestApplication;
   http: TestAgent;
   env: Env;
+  storage: MemoryStorage;
 }
 
 const FIXED_TEST_ENV: Record<string, string> = {
@@ -44,6 +47,7 @@ export async function createTestApp(
     ...overrides,
   });
 
+  const storage = new MemoryStorage();
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule, ...(options.imports ?? [])],
   })
@@ -51,11 +55,13 @@ export async function createTestApp(
     .useValue(env)
     .overrideProvider(IdTokenVerifier)
     .useValue(new FakeVerifier())
+    .overrideProvider(ObjectStorage)
+    .useValue(storage)
     .compile();
 
   const app = moduleRef.createNestApplication();
   configureApp(app);
   await app.init();
 
-  return { app, http: request(app.getHttpServer()), env };
+  return { app, http: request(app.getHttpServer()), env, storage };
 }
