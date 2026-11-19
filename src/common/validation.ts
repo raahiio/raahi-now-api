@@ -23,6 +23,7 @@ function boundsFor(target: object | undefined, property: string): MessageVars {
       case 'maxLength':
         if (num(a) !== undefined) vars.max = num(a) as number;
         break;
+      case 'textRange':
       case 'length':
         if (num(a) !== undefined) vars.min = num(a) as number;
         if (num(b) !== undefined) vars.max = num(b) as number;
