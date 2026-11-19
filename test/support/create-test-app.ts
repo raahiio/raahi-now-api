@@ -1,4 +1,4 @@
-import type { INestApplication } from '@nestjs/common';
+import type { INestApplication, ModuleMetadata } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent.js';
@@ -26,7 +26,15 @@ const FIXED_TEST_ENV: Record<string, string> = {
   JOBS_ENABLED: 'false',
 };
 
-export async function createTestApp(overrides: Record<string, string | undefined> = {}): Promise<TestApp> {
+export interface TestAppOptions {
+  /** Extra modules (e.g. a test-only controller module) imported next to AppModule. */
+  imports?: NonNullable<ModuleMetadata['imports']>;
+}
+
+export async function createTestApp(
+  overrides: Record<string, string | undefined> = {},
+  options: TestAppOptions = {},
+): Promise<TestApp> {
   const env = loadEnv({
     ...FIXED_TEST_ENV,
     DATABASE_URL: testDatabaseUrl(),
@@ -34,7 +42,7 @@ export async function createTestApp(overrides: Record<string, string | undefined
     ...overrides,
   });
 
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule, ...(options.imports ?? [])] })
     .overrideProvider(ENV)
     .useValue(env)
     .compile();
