@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsString,
   ValidateBy,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { IANAZone } from 'luxon';
@@ -48,14 +49,14 @@ export class SocialsDto {
 }
 
 export class UpdateMeDto {
-  @IsOptional()
+  @ValidateIf((_, v) => v !== undefined)
   @IsString({ message: 'firstName.required' })
   @PlainText('firstName.required')
   @NoContactDetails()
   @TextRange(2, 60, 'firstName')
   firstName?: string;
 
-  @IsOptional()
+  @ValidateIf((_, v) => v !== undefined)
   @ValidateBy({
     name: 'isTimeZone',
     validator: {

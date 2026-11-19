@@ -247,4 +247,28 @@ describe('Auth and /v1/me (e2e)', () => {
       field: 'firstName',
     });
   });
+
+  it('PATCH /v1/me rejects a null firstName', async () => {
+    const res = await t.http
+      .patch('/v1/me')
+      .set(auth)
+      .send({ firstName: null })
+      .expect(422);
+    expect(res.body.errors[0]).toMatchObject({
+      code: 'firstName.required',
+      field: 'firstName',
+    });
+  });
+
+  it('PATCH /v1/me rejects a null tz', async () => {
+    const res = await t.http
+      .patch('/v1/me')
+      .set(auth)
+      .send({ tz: null })
+      .expect(422);
+    expect(res.body.errors[0]).toMatchObject({
+      code: 'tz.invalid',
+      field: 'tz',
+    });
+  });
 });
