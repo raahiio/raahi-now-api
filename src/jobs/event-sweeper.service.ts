@@ -22,7 +22,7 @@ export class EventSweeper {
       this.db.transaction().execute(async (trx) => {
         const rows = await trx
           .updateTable('events')
-          .set({ status: 'past' })
+          .set({ status: 'past', updated_at: now })
           .where('status', '=', 'upcoming')
           .where(sql<boolean>`COALESCE(ends_at, starts_at) + interval '3 hours' <= ${now}`)
           .returning('id')

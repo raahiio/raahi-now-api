@@ -114,6 +114,13 @@ describe('Outbox relay and sweepers (e2e)', () => {
     expect(rows.map((r) => r.subject_id).sort((p, q) => p.localeCompare(q))).toEqual([withEnd, noEnd].sort((p, q) => p.localeCompare(q)));
   });
 
+  it('EventSweeper sets updated_at on the events it marks past', async () => {
+    const id = await insertUpcoming(minutes(-600), minutes(-180));
+    await events.run(NOW);
+    const row = await db.selectFrom('events').select('updated_at').where('id', '=', id).executeTakeFirstOrThrow();
+    expect(row.updated_at.getTime()).toBe(NOW.getTime());
+  });
+
   it('EventSweeper leaves an event 2h59m after its end', async () => {
     const id = await insertUpcoming(minutes(-600), minutes(-179));
     expect(await events.run(NOW)).toBe(0);
