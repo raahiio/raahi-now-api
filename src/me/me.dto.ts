@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
   IsObject,
@@ -34,7 +35,9 @@ function Handle(platform: Platform): PropertyDecorator {
       defaultMessage: () => `socials.${platform}.invalid`,
     },
   });
+  const doc = ApiProperty({ type: String, required: false, nullable: true, description: "Handle; '' or null removes it" });
   return (object, property) => {
+    doc(object, property);
     normalize(object, property);
     validate(object, property);
   };
@@ -49,6 +52,7 @@ export class SocialsDto {
 }
 
 export class UpdateMeDto {
+  @ApiProperty({ type: String, required: false, minLength: 2, maxLength: 60 })
   @ValidateIf((_, v) => v !== undefined)
   @IsString({ message: 'firstName.required' })
   @PlainText('firstName.required')
@@ -56,6 +60,7 @@ export class UpdateMeDto {
   @TextRange(2, 60, 'firstName')
   firstName?: string;
 
+  @ApiProperty({ type: String, required: false, description: 'IANA time zone', example: 'Asia/Colombo' })
   @ValidateIf((_, v) => v !== undefined)
   @ValidateBy({
     name: 'isTimeZone',
@@ -67,6 +72,7 @@ export class UpdateMeDto {
   })
   tz?: string;
 
+  @ApiProperty({ type: () => SocialsDto, required: false })
   @IsOptional()
   @IsObject({ message: 'socials.invalid' })
   @ValidateNested()

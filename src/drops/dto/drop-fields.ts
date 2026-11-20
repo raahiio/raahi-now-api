@@ -70,11 +70,15 @@ export function windowHours(): PropertyDecorator {
 }
 
 export function standIn(): PropertyDecorator {
-  return applyDecorators(IsOptional(), IsBoolean({ message: 'photoIsStandIn.invalid' }));
+  return applyDecorators(
+    ApiProperty({ type: Boolean, required: false }),
+    IsOptional(),
+    IsBoolean({ message: 'photoIsStandIn.invalid' }),
+  );
 }
 
 export function idField(field: string): PropertyDecorator {
-  return IsString({ message: `${field}.required` });
+  return applyDecorators(ApiProperty({ type: String }), IsString({ message: `${field}.required` }));
 }
 
 /** Optional and nullable (null clears it). */
