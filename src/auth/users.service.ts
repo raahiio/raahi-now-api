@@ -1,5 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { Kysely, Selectable } from 'kysely';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { type Kysely, type Selectable, sql } from 'kysely';
+import { AppError } from '../common/errors/app-error.js';
 import { uuidv7 } from 'uuidv7';
 import { DB } from '../db/tokens.js';
 import type { Schema, UsersTable } from '../db/schema.js';
@@ -14,6 +15,12 @@ export interface UserWithLocal {
 }
 
 const CLAIM_ROLES: readonly string[] = ['reviewer', 'admin'];
+const EMAIL_UNIQUE_INDEX = 'users_email_lower_key';
+
+function isEmailConflict(err: unknown): boolean {
+  const e = err as { code?: string; constraint?: string };
+  return e.code === '23505' && e.constraint === EMAIL_UNIQUE_INDEX;
+}
 
 function defaultFirstName(token: VerifiedToken): string {
   const fromName = token.name?.trim().split(/\s+/)[0];
@@ -23,11 +30,28 @@ function defaultFirstName(token: VerifiedToken): string {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(@Inject(DB) private readonly db: Kysely<Schema>) {}
 
-  /** Upserts by firebase_uid (safe under concurrent first requests) and returns the user plus its locals row. */
+  /**
+   * Upserts by firebase_uid (safe under concurrent first requests) and returns the user plus its locals row.
+   * When the email already belongs to a row with another firebase_uid, a verified email relinks that row
+   * to this uid (Firebase verified ownership); otherwise the request is 401 auth.email_in_use.
+   */
   async findOrCreate(token: VerifiedToken): Promise<UserWithLocal> {
-    const user = await this.db
+    let user: UserRow;
+    try {
+      user = await this.upsert(token);
+    } catch (err) {
+      if (!isEmailConflict(err)) throw err;
+      user = await this.relinkByEmail(token);
+    }
+    return { user, local: await this.localFor(user.id) };
+  }
+
+  private async upsert(token: VerifiedToken): Promise<UserRow> {
+    return this.db
       .insertInto('users')
       .values({
         id: uuidv7(),
@@ -45,7 +69,44 @@ export class UsersService {
       )
       .returningAll()
       .executeTakeFirstOrThrow();
-    return { user, local: await this.localFor(user.id) };
+  }
+
+  private async relinkByEmail(token: VerifiedToken): Promise<UserRow> {
+    const inUse = () => new AppError(401, 'auth.email_in_use');
+    if (!token.emailVerified) {
+      this.logger.warn('Sign-in refused: unverified email already linked to another account');
+      throw inUse();
+    }
+    // This uid already has its own row (an email change onto another account): two accounts can't be merged.
+    const own = await this.db.selectFrom('users').select('id').where('firebase_uid', '=', token.uid).executeTakeFirst();
+    if (own) {
+      this.logger.warn(`Sign-in refused: user ${own.id} changed to an email another account holds`);
+      throw inUse();
+    }
+    try {
+      const relinked = await this.db
+        .updateTable('users')
+        .set({ firebase_uid: token.uid, email: token.email, email_verified: true })
+        .where(sql<string>`lower(email)`, '=', token.email.toLowerCase())
+        .where('firebase_uid', '!=', token.uid)
+        .returningAll()
+        .executeTakeFirst();
+      if (relinked) {
+        this.logger.warn(`Relinked user ${relinked.id} to a new Firebase uid by verified email`);
+        return relinked;
+      }
+    } catch (err) {
+      // A concurrent request for the same uid created or relinked a row first.
+      const e = err as { code?: string };
+      if (e.code !== '23505') throw err;
+    }
+    // Lost a race to a concurrent relink of the same uid: that row is now this user's.
+    try {
+      return await this.upsert(token);
+    } catch (err) {
+      if (isEmailConflict(err)) throw inUse();
+      throw err;
+    }
   }
 
   private async localFor(userId: string): Promise<UserWithLocal['local']> {

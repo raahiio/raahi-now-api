@@ -56,6 +56,7 @@ export const MESSAGES: Record<string, string> = {
   'field.unknown': "This field isn't allowed.",
   'media.not_pending': 'This upload has already been processed.',
   'device.required': 'Add the X-Device-Id header to post as a guest.',
+  'auth.email_in_use': 'This email is already linked to another account.',
 };
 
 /** Generic per-suffix texts for `<field>.<suffix>` codes with no exact entry. */

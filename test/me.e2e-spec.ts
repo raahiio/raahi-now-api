@@ -92,6 +92,41 @@ describe('Auth and /v1/me (e2e)', () => {
     expect(await db.selectFrom('users').select('id').execute()).toHaveLength(1);
   });
 
+  it('a verified email held by another Firebase uid relinks that row to the new uid', async () => {
+    await t.http.get('/v1/me').set(auth).expect(200);
+    const before = await db.selectFrom('users').select('id').where('firebase_uid', '=', 'u1').executeTakeFirstOrThrow();
+    const relinked = { Authorization: fakeToken({ uid: 'u1-new', email: 'Priya@example.com' }) };
+    const res = await t.http.get('/v1/me').set(relinked).expect(200);
+    expect(res.body).toMatchObject({ id: before.id, emailVerified: true });
+    const rows = await db.selectFrom('users').select(['id', 'firebase_uid']).execute();
+    expect(rows).toEqual([{ id: before.id, firebase_uid: 'u1-new' }]);
+    await t.http.get('/v1/me').set(relinked).expect(200);
+  });
+
+  it('an unverified email held by another Firebase uid is 401 auth.email_in_use, not a 500', async () => {
+    await t.http.get('/v1/me').set(auth).expect(200);
+    const res = await t.http
+      .get('/v1/me')
+      .set({ Authorization: fakeToken({ uid: 'u9', email: 'priya@example.com', emailVerified: false }) })
+      .expect(401);
+    expect(res.body).toMatchObject({
+      code: 'auth.email_in_use',
+      message: 'This email is already linked to another account.',
+    });
+    const rows = await db.selectFrom('users').select('firebase_uid').execute();
+    expect(rows).toEqual([{ firebase_uid: 'u1' }]);
+  });
+
+  it('changing to an email another account holds is 401 auth.email_in_use, even when verified', async () => {
+    await t.http.get('/v1/me').set(auth).expect(200);
+    await t.http.get('/v1/me').set({ Authorization: fakeToken({ uid: 'u2', email: 'other@example.com' }) }).expect(200);
+    const res = await t.http
+      .get('/v1/me')
+      .set({ Authorization: fakeToken({ uid: 'u2', email: 'priya@example.com' }) })
+      .expect(401);
+    expect(res.body.code).toBe('auth.email_in_use');
+  });
+
   async function makeLocal(verified: boolean): Promise<string> {
     const user = await db
       .selectFrom('users')
