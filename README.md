@@ -72,6 +72,10 @@ Then set `TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/raahi_no
 | `npm run openapi` | Write `openapi.json` (git-ignored). Needs no database |
 | `npm run db:test` | Start the embedded test PostgreSQL |
 
+## Deployment
+
+Pushes to `develop` deploy to Amazon ECS through `.github/workflows/deploy-develop.yml` (tests, image to ECR, migrations as a one-off task, service rollout). The AWS resources and GitHub variables it needs are in [docs/deploy.md](docs/deploy.md). Build the image locally with `docker build -t raahi-now-api .`.
+
 ## Project layout
 
 ```

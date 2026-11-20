@@ -1,0 +1,16 @@
+.git
+.github
+.worktrees
+.superpowers
+.pgdata
+node_modules
+dist
+dist-openapi
+coverage
+docs
+test
+*.log
+.env
+.env.*
+!.env.example
+openapi.json
