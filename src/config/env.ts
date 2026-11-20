@@ -6,6 +6,8 @@ export interface Env {
   S3_BUCKET: string;
   S3_REGION: string;
   SES_FROM: string;
+  /** Region of the SES endpoint. Falls back to S3_REGION. */
+  SES_REGION?: string;
   CLAIM_CODE_SECRET: string;
   MANAGE_TOKEN_SECRET: string;
   DEVICE_HASH_SALT: string;
@@ -65,6 +67,7 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
     S3_BUCKET: source.S3_BUCKET!,
     S3_REGION: source.S3_REGION!,
     SES_FROM: source.SES_FROM!,
+    ...(source.SES_REGION ? { SES_REGION: source.SES_REGION } : {}),
     CLAIM_CODE_SECRET: source.CLAIM_CODE_SECRET!,
     MANAGE_TOKEN_SECRET: source.MANAGE_TOKEN_SECRET!,
     DEVICE_HASH_SALT: source.DEVICE_HASH_SALT!,

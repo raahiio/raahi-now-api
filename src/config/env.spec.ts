@@ -34,6 +34,12 @@ describe('loadEnv', () => {
     expect(env.JOBS_ENABLED).toBe(false);
   });
 
+  it('loadEnv reads the optional SES_REGION', () => {
+    expect(loadEnv({ ...validEnv }).SES_REGION).toBeUndefined();
+    expect(loadEnv({ ...validEnv, SES_REGION: '' }).SES_REGION).toBeUndefined();
+    expect(loadEnv({ ...validEnv, SES_REGION: 'us-east-1' }).SES_REGION).toBe('us-east-1');
+  });
+
   it('loadEnv parses TRUST_PROXY as a hop count, defaults to 0 and rejects bad values', () => {
     expect(loadEnv({ ...validEnv }).TRUST_PROXY).toBe(0);
     expect(loadEnv({ ...validEnv, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2);

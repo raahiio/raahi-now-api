@@ -39,8 +39,9 @@ In non-production environments the OpenAPI UI is served at `/v1/docs`.
 | `DATABASE_URL` | yes | | Read/write PostgreSQL connection |
 | `DATABASE_PUBLIC_URL` | yes | | Connection as a login role that is a member of `raahi_public_read` (for example `raahi_public`), used by the public GET endpoints |
 | `S3_BUCKET` | yes | | Bucket for uploaded images |
-| `S3_REGION` | yes | | AWS region of the bucket and SES |
+| `S3_REGION` | yes | | AWS region of the bucket (and of SES when `SES_REGION` is unset) |
 | `SES_FROM` | yes | | Sender address for claim-code emails |
+| `SES_REGION` | no | `S3_REGION` | AWS region of the SES endpoint |
 | `CLAIM_CODE_SECRET` | yes | | HMAC key for guest claim codes, at least 32 characters |
 | `MANAGE_TOKEN_SECRET` | yes | | Signing key for guest manage tokens, at least 32 characters |
 | `DEVICE_HASH_SALT` | yes | | Salt for hashing device ids and IPs in rate limits |

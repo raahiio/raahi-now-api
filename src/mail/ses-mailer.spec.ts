@@ -3,15 +3,24 @@ import { LogMailer } from './log-mailer.js';
 import { SesMailer } from './ses-mailer.js';
 
 const send = vi.fn();
+const configs: unknown[] = [];
 vi.mock('@aws-sdk/client-sesv2', async (orig) => {
   const actual = await orig<typeof import('@aws-sdk/client-sesv2')>();
-  return { ...actual, SESv2Client: class { send = send; } };
+  return {
+    ...actual,
+    SESv2Client: class {
+      send = send;
+      constructor(config: unknown) {
+        configs.push(config);
+      }
+    },
+  };
 });
 
 describe('SesMailer', () => {
   it('sends one SendEmail command with from, to, subject and text', async () => {
     send.mockResolvedValue({});
-    const mailer = new SesMailer({ SES_FROM: 'no-reply@raahi.test' } as never);
+    const mailer = new SesMailer({ SES_FROM: 'no-reply@raahi.test', S3_REGION: 'ap-south-1' });
     await mailer.send({ to: 'guest@example.com', subject: 'Hello', text: 'Body text' });
     expect(send).toHaveBeenCalledTimes(1);
     const command = send.mock.calls[0]![0] as SendEmailCommand;
@@ -21,6 +30,24 @@ describe('SesMailer', () => {
       Destination: { ToAddresses: ['guest@example.com'] },
       Content: { Simple: { Subject: { Data: 'Hello' }, Body: { Text: { Data: 'Body text' } } } },
     });
+  });
+});
+
+describe('SesMailer region', () => {
+  beforeEach(() => {
+    configs.length = 0;
+    send.mockResolvedValue({});
+  });
+  const msg = { to: 'guest@example.com', subject: 'Hi', text: 'Body' };
+
+  it('uses SES_REGION when set', async () => {
+    await new SesMailer({ SES_FROM: 'a@raahi.test', S3_REGION: 'ap-south-1', SES_REGION: 'us-east-1' }).send(msg);
+    expect(configs).toEqual([{ region: 'us-east-1' }]);
+  });
+
+  it('falls back to S3_REGION', async () => {
+    await new SesMailer({ SES_FROM: 'a@raahi.test', S3_REGION: 'ap-south-1' }).send(msg);
+    expect(configs).toEqual([{ region: 'ap-south-1' }]);
   });
 });
 

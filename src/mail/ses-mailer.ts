@@ -5,13 +5,13 @@ import { type MailMessage, Mailer } from './mailer.js';
 export class SesMailer extends Mailer {
   private client?: SESv2Client;
 
-  constructor(private readonly env: Pick<Env, 'SES_FROM'>) {
+  constructor(private readonly env: Pick<Env, 'SES_FROM' | 'SES_REGION' | 'S3_REGION'>) {
     super();
   }
 
   /** Built on first use so apps that never send mail never construct a client. */
   private ses(): SESv2Client {
-    return (this.client ??= new SESv2Client({}));
+    return (this.client ??= new SESv2Client({ region: this.env.SES_REGION ?? this.env.S3_REGION }));
   }
 
   async send(msg: MailMessage): Promise<void> {
