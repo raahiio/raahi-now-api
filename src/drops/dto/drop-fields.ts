@@ -1,4 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
+import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsOptional, IsString, Max, Min, ValidateBy, ValidateIf } from 'class-validator';
 import { NoContactDetails, NotMentioning, PlainText, TextRange } from '../../common/validation/decorators.js';
 import { WINDOW_HOURS } from '../drop-state.js';
@@ -12,6 +13,8 @@ export function text(
   opts: { contact?: boolean; place?: 'public' | 'fuzzy' } = {},
 ): PropertyDecorator {
   return applyDecorators(
+    // Documentation only: the limits shown in the OpenAPI schema; validation is TextRange below.
+    ApiProperty({ type: String, minLength: min, maxLength: max }),
     IsString({ message: `${field}.required` }),
     PlainText(`${field}.required`),
     ...(opts.contact ? [NoContactDetails()] : []),
@@ -24,6 +27,7 @@ export function text(
 export function whole(field: string, min: number, max: number, opts: { step?: number } = {}): PropertyDecorator {
   const { step } = opts;
   return applyDecorators(
+    ApiProperty({ type: Number, minimum: min, maximum: max, ...(step ? { multipleOf: step } : {}) }),
     ValidateBy({
       name: 'wholeNumber',
       validator: {
@@ -59,7 +63,10 @@ export function costNotBelowMin(): PropertyDecorator {
 }
 
 export function windowHours(): PropertyDecorator {
-  return IsIn([...WINDOW_HOURS], { message: 'windowHours.invalid' });
+  return applyDecorators(
+    ApiProperty({ type: Number, enum: [...WINDOW_HOURS] }),
+    IsIn([...WINDOW_HOURS], { message: 'windowHours.invalid' }),
+  );
 }
 
 export function standIn(): PropertyDecorator {
@@ -71,7 +78,7 @@ export function idField(field: string): PropertyDecorator {
 }
 
 /** Optional and nullable (null clears it). */
-export const optional = (inner: PropertyDecorator): PropertyDecorator => applyDecorators(IsOptional(), inner);
+export const optional = (inner: PropertyDecorator): PropertyDecorator => applyDecorators(ApiProperty({ required: false, nullable: true }), IsOptional(), inner);
 /** Absent means unchanged; null is rejected. */
 export const patch = (inner: PropertyDecorator): PropertyDecorator =>
-  applyDecorators(ValidateIf((_, v) => v !== undefined), inner);
+  applyDecorators(ApiProperty({ required: false }), ValidateIf((_, v) => v !== undefined), inner);

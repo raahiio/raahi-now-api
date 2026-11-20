@@ -20,7 +20,8 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "db:test": "node scripts/test-db.mjs"
+    "db:test": "node scripts/test-db.mjs",
+    "openapi": "tsc -p tsconfig.openapi.json && node dist-openapi/scripts/openapi.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1172.0",
@@ -30,6 +31,7 @@
     "@nestjs/core": "12.5.1",
     "@nestjs/platform-express": "12.5.1",
     "@nestjs/schedule": "12.0.4",
+    "@nestjs/swagger": "12.1.2",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
     "firebase-admin": "14.5.1",
@@ -43,6 +45,7 @@
     "uuidv7": "1.2.1"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "13.1.0",
     "@nestjs/cli": "12.0.13",
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",

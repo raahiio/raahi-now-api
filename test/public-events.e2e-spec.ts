@@ -109,7 +109,7 @@ describe('Public events (e2e)', () => {
     const seen: string[] = [];
     let cursor: string | null = null;
     do {
-      const body = (await t.http.get(`/v1/events?limit=1${cursor ? `&cursor=${cursor}` : ''}`).expect(200)).body;
+      const body: { items: { id: string }[]; nextCursor: string | null } = (await t.http.get(`/v1/events?limit=1${cursor ? `&cursor=${cursor}` : ''}`).expect(200)).body;
       seen.push(...ids(body));
       cursor = body.nextCursor;
     } while (cursor);
