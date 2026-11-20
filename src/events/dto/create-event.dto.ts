@@ -6,6 +6,8 @@ import {
   dateNoteField,
   descriptionField,
   exactAddressField,
+  hostEmailField,
+  hostNameField,
   idField,
   link,
   nameField,
@@ -28,4 +30,7 @@ export class CreateEventDto {
   @optional(capacityField()) capacity?: number | null;
   @optional(photoField()) photoMediaId?: string | null;
   @optional(link()) link?: string | null;
+  /** Guests only. An account sending either is 422 `field.unknown`. */
+  @optional(hostNameField()) hostName?: string | null;
+  @optional(hostEmailField()) hostEmail?: string | null;
 }

@@ -6,6 +6,8 @@ import { ConfigModule } from './config/config.module.js';
 import { DbModule } from './db/db.module.js';
 import { DropsModule } from './drops/drops.module.js';
 import { HealthModule } from './health/health.module.js';
+import { GuestsModule } from './guests/guests.module.js';
+import { MailModule } from './mail/mail.module.js';
 import { MarketsModule } from './markets/markets.module.js';
 import { MediaModule } from './media/media.module.js';
 import { ReviewModule } from './review/review.module.js';
@@ -23,6 +25,8 @@ import { MeModule } from './me/me.module.js';
     MediaModule,
     DropsModule,
     ReviewModule,
+    MailModule,
+    GuestsModule,
     EventsModule,
   ],
 })

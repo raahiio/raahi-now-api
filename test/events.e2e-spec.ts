@@ -199,8 +199,9 @@ describe('Events, account host (e2e)', () => {
     expect(row).toMatchObject({ host_name: 'Test Local', host_badge: 'verified_local', owner_user_id: me.userId });
   });
 
-  it('requires a signed-in user', async () => {
-    await t.http.post('/v1/events').send(validEvent()).expect(401);
+  it('requires a signed-in user, except that an anonymous post takes the guest path (422 device.required)', async () => {
+    const anon = await t.http.post('/v1/events').send(validEvent()).expect(422);
+    expect(anon.body.code).toBe('device.required');
     await t.http.get('/v1/me/events').expect(401);
   });
 

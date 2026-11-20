@@ -8,7 +8,9 @@ import { Clock } from '../../src/common/clock.js';
 import { ENV } from '../../src/config/config.module.js';
 import { loadEnv, type Env } from '../../src/config/env.js';
 import { configureApp } from '../../src/configure-app.js';
+import { Mailer } from '../../src/mail/mailer.js';
 import { ObjectStorage } from '../../src/media/object-storage.js';
+import { CapturingMailer } from './capturing-mailer.js';
 import { FakeVerifier } from './fake-verifier.js';
 import { FixedClock } from './fixed-clock.js';
 import { MemoryStorage } from './memory-storage.js';
@@ -20,6 +22,7 @@ export interface TestApp {
   env: Env;
   storage: MemoryStorage;
   clock: FixedClock;
+  mailer: CapturingMailer;
 }
 
 const FIXED_TEST_ENV: Record<string, string> = {
@@ -52,6 +55,7 @@ export async function createTestApp(
 
   const storage = new MemoryStorage();
   const clock = new FixedClock();
+  const mailer = new CapturingMailer();
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule, ...(options.imports ?? [])],
   })
@@ -63,11 +67,13 @@ export async function createTestApp(
     .useValue(storage)
     .overrideProvider(Clock)
     .useValue(clock)
+    .overrideProvider(Mailer)
+    .useValue(mailer)
     .compile();
 
   const app = moduleRef.createNestApplication();
   configureApp(app);
   await app.init();
 
-  return { app, http: request(app.getHttpServer()), env, storage, clock };
+  return { app, http: request(app.getHttpServer()), env, storage, clock, mailer };
 }

@@ -1,5 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import { IsIn, IsString } from 'class-validator';
+import { IsEmail, IsIn, IsString, MaxLength } from 'class-validator';
 import { HttpsNoShortener } from '../../common/validation/decorators.js';
 import { idField, text, whole } from '../../drops/dto/drop-fields.js';
 import { ADDRESS_VISIBILITIES, EVENT_CATEGORIES } from '../event-state.js';
@@ -20,3 +20,11 @@ export const dateNoteField = () => text('dateNote', 2, 60);
 export const exactAddressField = () => text('exactAddress', 5, 160);
 export const capacityField = () => whole('capacity', 1, 500);
 export const photoField = () => idField('photoMediaId');
+export const hostNameField = () => text('hostName', 2, 60, { contact: true });
+/** Guest contact email. Never echoed back. A malformed value is `hostEmail.invalid`. */
+export const hostEmailField = (): PropertyDecorator =>
+  applyDecorators(
+    IsString({ message: 'hostEmail.invalid' }),
+    MaxLength(254, { message: 'hostEmail.invalid' }),
+    IsEmail({}, { message: 'hostEmail.invalid' }),
+  );
