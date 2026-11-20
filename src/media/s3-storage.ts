@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Inject, Injectable } from '@nestjs/common';
 import { ENV } from '../config/config.module.js';
@@ -20,10 +20,30 @@ export class S3Storage extends ObjectStorage {
     return (this.client ??= new S3Client({ region: this.env.S3_REGION }));
   }
 
-  async presignPut(key: string, contentType: string): Promise<PresignedPut> {
-    const command = new PutObjectCommand({ Bucket: this.env.S3_BUCKET, Key: key, ContentType: contentType });
-    const url = await getSignedUrl(this.s3(), command, { expiresIn: PRESIGN_TTL_SECONDS });
-    return { url, headers: { 'Content-Type': contentType } };
+  async presignPut(key: string, contentType: string, sizeBytes: number): Promise<PresignedPut> {
+    // Content-Length is signed, so S3 refuses a PUT of any other size.
+    const command = new PutObjectCommand({
+      Bucket: this.env.S3_BUCKET,
+      Key: key,
+      ContentType: contentType,
+      ContentLength: sizeBytes,
+    });
+    const url = await getSignedUrl(this.s3(), command, {
+      expiresIn: PRESIGN_TTL_SECONDS,
+      signableHeaders: new Set(['content-type', 'content-length']),
+    });
+    return { url, headers: { 'Content-Type': contentType, 'Content-Length': String(sizeBytes) } };
+  }
+
+  async head(key: string): Promise<{ size: number } | null> {
+    try {
+      const res = await this.s3().send(new HeadObjectCommand({ Bucket: this.env.S3_BUCKET, Key: key }));
+      return { size: res.ContentLength ?? 0 };
+    } catch (err) {
+      const e = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+      if (e.name === 'NotFound' || e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404) return null;
+      throw err;
+    }
   }
 
   async get(key: string): Promise<Buffer> {

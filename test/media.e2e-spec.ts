@@ -32,7 +32,7 @@ describe('Media uploads (e2e)', () => {
   });
   beforeEach(async () => {
     await resetDb(db);
-    t.storage.objects.clear();
+    t.storage.clear();
   });
 
   const create = async (headers: Record<string, string> = auth) =>
@@ -56,7 +56,7 @@ describe('Media uploads (e2e)', () => {
 
   it('returns a presigned PUT and a pending media row owned by the user', async () => {
     const res = await t.http.post('/v1/media/uploads').set(auth).send({ contentType: 'image/webp', sizeBytes: 1000 }).expect(201);
-    expect(res.body.upload).toMatchObject({ method: 'PUT', headers: { 'Content-Type': 'image/webp' } });
+    expect(res.body.upload).toMatchObject({ method: 'PUT', headers: { 'Content-Type': 'image/webp', 'Content-Length': '1000' } });
     expect(res.body.upload.url).toContain(`media/${res.body.mediaId}/original`);
     const r = await row(res.body.mediaId);
     expect(r).toMatchObject({ status: 'pending', owner_device_hash: null, s3_key: `media/${res.body.mediaId}/original` });
@@ -74,6 +74,15 @@ describe('Media uploads (e2e)', () => {
     expect(meta.exif).toBeUndefined();
     expect(meta.format).toBe('jpeg');
     expect(await row(id)).toMatchObject({ status: 'ready', s3_key: `media/${id}/display.jpg`, content_type: 'image/jpeg', width: 900, height: 900 });
+  });
+
+  it('complete rejects an object over 5,242,880 bytes from its size alone, without downloading it', async () => {
+    const id = await create();
+    t.storage.seed(id, Buffer.alloc(5_242_881));
+    const res = await t.http.post(`/v1/media/${id}/complete`).set(auth).expect(422);
+    expect(res.body).toMatchObject({ code: 'validation_failed', errors: [{ code: 'image.too_large', field: 'file' }] });
+    expect(t.storage.gets).toEqual([]);
+    expect(await row(id)).toMatchObject({ status: 'rejected', reject_code: 'image.too_large' });
   });
 
   it('complete is idempotent once ready', async () => {
@@ -153,6 +162,13 @@ describe('Media uploads (e2e)', () => {
     const res = await t.http.post('/v1/media/uploads').set(dev).send({ contentType: 'image/jpeg', sizeBytes: 1000 }).expect(429);
     expect(res.body.code).toBe('rate_limited');
     await create({ 'X-Device-Id': 'device-bbbb' });
+  });
+
+  it('guests are limited to 60 uploads an hour per IP across devices; signed-in users are not IP-limited', async () => {
+    for (let d = 0; d < 3; d++) for (let i = 0; i < 20; i++) await create({ 'X-Device-Id': `device-${d}` });
+    const res = await t.http.post('/v1/media/uploads').set({ 'X-Device-Id': 'device-new' }).send({ contentType: 'image/jpeg', sizeBytes: 1000 }).expect(429);
+    expect(res.body.code).toBe('rate_limited');
+    await create(auth);
   });
 
   it('signed-in users are limited to 20 uploads an hour as well', async () => {

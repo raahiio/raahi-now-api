@@ -14,11 +14,12 @@ import { MAX_IMAGE_BYTES } from './media.dto.js';
 import { ObjectNotFoundError, ObjectStorage } from './object-storage.js';
 
 const UPLOADS_PER_HOUR = 20;
+const GUEST_UPLOADS_PER_IP_HOUR = 60;
 const HOUR_SECONDS = 3600;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Who is asking: a signed-in user id, or a hashed device id for guests. */
-export type MediaCaller = { userId: string } | { deviceHash: string };
+/** Who is asking: a signed-in user id, or a hashed device id (and hashed IP) for guests. */
+export type MediaCaller = { userId: string } | { deviceHash: string; ipHash: string };
 
 export interface CompletedMedia {
   id: string;
@@ -44,12 +45,15 @@ export class MediaService {
     private readonly limiter: RateLimiter,
   ) {}
 
-  async createUpload(caller: MediaCaller, contentType: string) {
+  async createUpload(caller: MediaCaller, contentType: string, sizeBytes: number) {
+    if ('ipHash' in caller) {
+      await this.limiter.hit('media_upload_ip', caller.ipHash, GUEST_UPLOADS_PER_IP_HOUR, HOUR_SECONDS);
+    }
     const rateKey = 'userId' in caller ? hashKey(`user:${caller.userId}`, this.env.DEVICE_HASH_SALT) : caller.deviceHash;
     await this.limiter.hit('media_upload', rateKey, UPLOADS_PER_HOUR, HOUR_SECONDS);
 
     const id = uuidv7();
-    const upload = await this.storage.presignPut(originalKey(id), contentType);
+    const upload = await this.storage.presignPut(originalKey(id), contentType, sizeBytes);
     await this.db
       .insertInto('media')
       .values({
@@ -76,15 +80,19 @@ export class MediaService {
     if (row.status === 'ready') return this.view(row.id, row.width!, row.height!);
     if (row.status === 'rejected') throw new AppError(409, 'media.not_pending');
 
-    let original: Buffer;
-    try {
-      original = await this.storage.get(originalKey(id));
-    } catch (err) {
-      if (err instanceof ObjectNotFoundError) throw fileError('photo.not_ready');
-      throw err;
-    }
+    // Check the stored size before downloading, so an oversize object never enters memory.
+    const stored = await this.storage.head(originalKey(id));
+    if (!stored) throw fileError('photo.not_ready');
 
     try {
+      if (stored.size > MAX_IMAGE_BYTES) throw new AppError(422, 'image.too_large', 'file');
+      let original: Buffer;
+      try {
+        original = await this.storage.get(originalKey(id));
+      } catch (err) {
+        if (err instanceof ObjectNotFoundError) throw fileError('photo.not_ready');
+        throw err;
+      }
       if (original.length > MAX_IMAGE_BYTES) throw new AppError(422, 'image.too_large', 'file');
       const image = await this.processor.process(original);
       await this.storage.put(displayKey(id), image.output, image.contentType);
