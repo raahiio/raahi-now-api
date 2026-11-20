@@ -11,6 +11,8 @@ export interface Env {
   DEVICE_HASH_SALT: string;
   FIREBASE_PROJECT_ID: string;
   JOBS_ENABLED: boolean;
+  /** Number of reverse-proxy hops to trust for req.ip. 0 means off. */
+  TRUST_PROXY: number;
 }
 
 const REQUIRED = [
@@ -45,6 +47,12 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
     problems.push('PORT must be an integer between 0 and 65535');
   }
 
+  const trustRaw = source.TRUST_PROXY;
+  const trustProxy = trustRaw === undefined || trustRaw === '' ? 0 : Number(trustRaw);
+  if (!Number.isInteger(trustProxy) || trustProxy < 0) {
+    problems.push('TRUST_PROXY must be a non-negative integer hop count');
+  }
+
   if (problems.length > 0) {
     throw new Error(`Invalid environment variables: ${problems.join('; ')}`);
   }
@@ -61,6 +69,7 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
     MANAGE_TOKEN_SECRET: source.MANAGE_TOKEN_SECRET!,
     DEVICE_HASH_SALT: source.DEVICE_HASH_SALT!,
     FIREBASE_PROJECT_ID: source.FIREBASE_PROJECT_ID!,
+    TRUST_PROXY: trustProxy,
     JOBS_ENABLED: source.JOBS_ENABLED === undefined ? true : source.JOBS_ENABLED.toLowerCase() !== 'false',
   };
 }

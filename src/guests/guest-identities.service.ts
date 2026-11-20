@@ -143,14 +143,13 @@ export class GuestIdentitiesService {
     if (issued.length === 0) return;
 
     const lines = issued.map((e) => `${e.name}: ${e.code}`).join('\n');
-    try {
-      await this.mailer.send({
+    // Not awaited: the response must take the same time whether or not the email is known.
+    void this.mailer
+      .send({
         to: normalized,
         subject: 'Your Raahi event claim codes',
         text: `Here are your new claim codes. Older codes no longer work.\n\n${lines}\n\nUse a code to edit or cancel its event.`,
-      });
-    } catch (err) {
-      this.logger.error(`recovery mail failed: ${err instanceof Error ? err.name : 'unknown'}`);
-    }
+      })
+      .catch((err: unknown) => this.logger.error(`recovery mail failed: ${err instanceof Error ? err.name : 'unknown'}`));
   }
 }

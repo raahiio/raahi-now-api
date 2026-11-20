@@ -33,4 +33,12 @@ describe('loadEnv', () => {
     expect(env.PORT).toBe(4100);
     expect(env.JOBS_ENABLED).toBe(false);
   });
+
+  it('loadEnv parses TRUST_PROXY as a hop count, defaults to 0 and rejects bad values', () => {
+    expect(loadEnv({ ...validEnv }).TRUST_PROXY).toBe(0);
+    expect(loadEnv({ ...validEnv, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2);
+    for (const bad of ['-1', '1.5', 'yes']) {
+      expect(() => loadEnv({ ...validEnv, TRUST_PROXY: bad })).toThrow(/TRUST_PROXY/);
+    }
+  });
 });

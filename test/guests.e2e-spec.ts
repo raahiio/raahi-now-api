@@ -254,6 +254,7 @@ describe('Guest hosts (e2e)', () => {
     it('answers 202 ok for an unknown email and sends nothing', async () => {
       const res = await t.http.post('/v1/claims/recover').send({ email: 'nobody@example.com' }).expect(202);
       expect(res.body).toEqual({ status: 'ok' });
+      await t.mailer.flush();
       expect(t.mailer.sent).toEqual([]);
     });
 
@@ -267,6 +268,7 @@ describe('Guest hosts (e2e)', () => {
 
       const res = await t.http.post('/v1/claims/recover').send({ email: ' Guest@EXAMPLE.com ' }).expect(202);
       expect(res.body).toEqual({ status: 'ok' });
+      await t.mailer.flush();
       expect(t.mailer.sent).toHaveLength(1);
       const mail = t.mailer.sent[0]!;
       expect(mail.to).toBe('guest@example.com');
