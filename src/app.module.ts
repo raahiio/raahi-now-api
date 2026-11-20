@@ -11,6 +11,7 @@ import { MailModule } from './mail/mail.module.js';
 import { MarketsModule } from './markets/markets.module.js';
 import { MediaModule } from './media/media.module.js';
 import { ReviewModule } from './review/review.module.js';
+import { JobsModule } from './jobs/jobs.module.js';
 import { MeModule } from './me/me.module.js';
 
 @Module({
@@ -28,6 +29,7 @@ import { MeModule } from './me/me.module.js';
     MailModule,
     GuestsModule,
     EventsModule,
+    JobsModule,
   ],
 })
 export class AppModule {}
