@@ -8,6 +8,7 @@ import { nextDropStatus } from '../drops/drop-state.js';
 import { serializeDrop } from '../drops/drop.serializer.js';
 import { ownerDropQuery } from '../drops/owner-view.js';
 import { OutboxService } from '../outbox/outbox.service.js';
+import { latestReview } from './review-summary.js';
 
 type Trx = Transaction<Schema>;
 type Action = 'approve' | 'reject' | 'remove';
@@ -99,9 +100,10 @@ export class ReviewService {
       // Lock the subject first (same order as the owner flows), so concurrent decisions queue up.
       const from = await this.lockSubject(trx, kind, id);
 
+      const now = new Date();
       const decided = await trx
         .updateTable('review_items')
-        .set({ state: DECIDED[action], decided_at: new Date(), reviewer_id: reviewerId, reason: reason ?? null })
+        .set({ state: DECIDED[action], decided_at: now, reviewer_id: reviewerId, reason: reason ?? null })
         .where('kind', '=', kind)
         .where('ref_id', '=', id)
         .where('state', '=', 'pending')
@@ -111,6 +113,23 @@ export class ReviewService {
       if (!decided && action !== 'remove') throw new AppError(409, 'review.not_pending');
 
       const to = await this.moveSubject(trx, kind, id, from, action);
+
+      // Removing a live, paused or finished item has no pending row: record the decision so the poster sees the reason.
+      if (!decided) {
+        await trx
+          .insertInto('review_items')
+          .values({
+            id: uuidv7(),
+            kind,
+            ref_id: id,
+            state: 'removed',
+            reason: reason ?? null,
+            submitted_at: now,
+            decided_at: now,
+            reviewer_id: reviewerId,
+          })
+          .execute();
+      }
 
       const diff = { from, to, ...(reason ? { reason } : {}) };
       await trx
@@ -189,6 +208,7 @@ export class ReviewService {
         'event_private.exact_address',
         'guest_identities.email as guest_email',
         'users.email as owner_email',
+        latestReview('event', 'events.id'),
       ])
       .where('events.id', 'in', ids)
       .execute();
@@ -211,6 +231,7 @@ export class ReviewService {
       status: e.status,
       exactAddress: e.exact_address ?? null,
       hostEmail: e.guest_email ?? e.owner_email ?? null,
+      review: e.review ?? null,
       createdAt: e.created_at.toISOString(),
     }));
   }

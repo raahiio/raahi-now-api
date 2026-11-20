@@ -57,6 +57,7 @@ export const MESSAGES: Record<string, string> = {
   'media.not_pending': 'This upload has already been processed.',
   'device.required': 'Add the X-Device-Id header to post as a guest.',
   'auth.email_in_use': 'This email is already linked to another account.',
+  'review.reason_too_long': 'Use at most {max} characters.',
 };
 
 /** Generic per-suffix texts for `<field>.<suffix>` codes with no exact entry. */

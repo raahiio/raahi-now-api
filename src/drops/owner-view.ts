@@ -1,8 +1,9 @@
 import type { Kysely, Transaction } from 'kysely';
 import type { Schema } from '../db/schema.js';
+import { latestReview } from '../review/review-summary.js';
 import { type DropRow, type PrivateDropView, serializeDrop } from './drop.serializer.js';
 
-/** Drops joined with their private fields, market and local, for owner and reviewer views. */
+/** Drops joined with their private fields, market, local and latest review decision, for owner and reviewer views. */
 export function ownerDropQuery(db: Kysely<Schema> | Transaction<Schema>) {
   return db
     .selectFrom('drops')
@@ -18,6 +19,7 @@ export function ownerDropQuery(db: Kysely<Schema> | Transaction<Schema>) {
       'locals.display_name as local_display_name',
       'locals.role_title as local_role_title',
       'locals.verified_at as local_verified_at',
+      latestReview('drop', 'drops.id'),
     ]);
 }
 

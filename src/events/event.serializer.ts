@@ -2,6 +2,7 @@ import type { Selectable } from 'kysely';
 import { formatInZone } from '../common/time/wall-clock.js';
 import type { EventsTable } from '../db/schema.js';
 import type { Audience } from '../drops/drop.serializer.js';
+import type { ReviewSummary } from '../review/review-summary.js';
 
 type PublicColumns =
   | 'id'
@@ -31,6 +32,8 @@ export type EventRow = Pick<Selectable<EventsTable>, PublicColumns> & {
   market_city: string;
   market_tz: string;
   exact_address?: string | null;
+  /** Latest review decision; only owner and reviewer queries select it. */
+  review?: ReviewSummary | null;
 };
 
 export interface PublicEventView {
@@ -59,6 +62,7 @@ export interface PrivateEventView extends Omit<PublicEventView, 'exactAddress'> 
   addressVisibility: string | null;
   capacity: number | null;
   status: string;
+  review: ReviewSummary | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -105,6 +109,7 @@ export function serializeEvent(row: EventRow, audience: Audience, _now: Date): E
     addressVisibility: row.address_visibility,
     capacity: row.capacity,
     status: row.status,
+    review: row.review ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };

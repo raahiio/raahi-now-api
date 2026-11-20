@@ -234,6 +234,66 @@ describe('Review queue and admin actions (e2e)', () => {
     expect(item.state).toBe('removed');
   });
 
+  describe('the decision reason reaches the poster', () => {
+    const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+    it('the owner sees the reason after a rejection; the reviewer view has it too', async () => {
+      const id = await submittedDrop();
+      expect((await t.http.get(`/v1/me/drops/${id}`).set(me.headers).expect(200)).body.review).toBeNull();
+      await act('drop', id, 'reject', { reason: 'Photo is blurry' }).expect(200);
+      const own = (await t.http.get(`/v1/me/drops/${id}`).set(me.headers).expect(200)).body;
+      expect(own.review).toEqual({ state: 'rejected', reason: 'Photo is blurry', decidedAt: expect.stringMatching(ISO) });
+      const list = (await t.http.get('/v1/me/drops').set(me.headers).expect(200)).body.items;
+      expect(list[0].review).toMatchObject({ state: 'rejected', reason: 'Photo is blurry' });
+      const asReviewer = (await t.http.get(`/v1/drops/${id}`).set(reviewer).expect(200)).body;
+      expect(asReviewer.review).toMatchObject({ state: 'rejected', reason: 'Photo is blurry' });
+    });
+
+    it('removing a live Drop records a decided review row with the reason, shown to the owner but never publicly', async () => {
+      const id = await submittedDrop();
+      await act('drop', id, 'approve').expect(200);
+      const pub = (await t.http.get(`/v1/drops/${id}`).expect(200)).body;
+      expect(pub).not.toHaveProperty('review');
+      expect((await t.http.get(`/v1/me/drops/${id}`).set(me.headers).expect(200)).body.review).toMatchObject({ state: 'approved', reason: null });
+
+      await act('drop', id, 'remove', { reason: 'Reported by a traveler' }).expect(200);
+      const rows = await db.selectFrom('review_items').select(['state', 'reason', 'reviewer_id', 'decided_at']).where('ref_id', '=', id).orderBy('decided_at').execute();
+      expect(rows.map((r) => [r.state, r.reason])).toEqual([['approved', null], ['removed', 'Reported by a traveler']]);
+      expect(rows[1]?.reviewer_id).not.toBeNull();
+      const own = (await t.http.get(`/v1/me/drops/${id}`).set(me.headers).expect(200)).body;
+      expect(own.review).toMatchObject({ state: 'removed', reason: 'Reported by a traveler' });
+    });
+
+    it('the event owner sees the reason after a rejection and after removal of an upcoming event; the public never does', async () => {
+      const rejected = await insertEvent(db, { ownerUserId: me.userId });
+      await act('event', rejected, 'reject', { reason: 'Not a real event' }).expect(200);
+      const upcoming = await insertEvent(db, { ownerUserId: me.userId, status: 'upcoming', review: false });
+      expect((await t.http.get(`/v1/events/${upcoming}`).expect(200)).body).not.toHaveProperty('review');
+      await act('event', upcoming, 'remove', { reason: 'Reported by a traveler' }).expect(200);
+
+      const items = (await t.http.get('/v1/me/events').set(me.headers).expect(200)).body.items as { id: string; review: unknown }[];
+      expect(items.find((e) => e.id === rejected)?.review).toMatchObject({ state: 'rejected', reason: 'Not a real event' });
+      expect(items.find((e) => e.id === upcoming)?.review).toMatchObject({ state: 'removed', reason: 'Reported by a traveler' });
+      const own = (await t.http.get(`/v1/events/${upcoming}`).set(me.headers).expect(200)).body;
+      expect(own.review).toMatchObject({ state: 'removed', reason: 'Reported by a traveler' });
+    });
+
+    it('review queue items carry the latest decision (null when there is none)', async () => {
+      await submittedDrop();
+      await insertEvent(db);
+      const items = (await t.http.get('/v1/admin/review-queue').set(reviewer).expect(200)).body.items as { item: { review: unknown } }[];
+      expect(items).toHaveLength(2);
+      for (const i of items) expect(i.item.review).toBeNull();
+    });
+
+    it('a reason over 500 characters is 422 review.reason_too_long', async () => {
+      const id = await submittedDrop();
+      const res = await act('drop', id, 'reject', { reason: 'x'.repeat(501) }).expect(422);
+      expect(res.body.errors[0]).toMatchObject({ code: 'review.reason_too_long', field: 'reason', message: 'Use at most 500 characters.' });
+      await act('drop', id, 'reject', { reason: 'x'.repeat(500) }).expect(200);
+    });
+  });
+
   it('a bad kind, an unknown id and a non-UUID id are 404', async () => {
     const id = await submittedDrop();
     await act('banner', id, 'approve').expect(404);

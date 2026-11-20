@@ -1,5 +1,6 @@
 import type { Selectable } from 'kysely';
 import type { DropsTable } from '../db/schema.js';
+import type { ReviewSummary } from '../review/review-summary.js';
 
 export type Audience = 'public' | 'owner' | 'reviewer';
 
@@ -12,6 +13,8 @@ export type DropRow = Selectable<DropsTable> & {
   local_verified_at: Date | null;
   exact_place?: string;
   meet_detail?: string | null;
+  /** Latest review decision; only owner and reviewer queries select it. */
+  review?: ReviewSummary | null;
 };
 
 export interface PublicDropView {
@@ -38,6 +41,7 @@ export interface PrivateDropView extends PublicDropView {
   windowHours: number;
   exactPlace: string;
   meetDetail: string | null;
+  review: ReviewSummary | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,6 +83,7 @@ export function serializeDrop(row: DropRow, audience: Audience, _now: Date): Dro
     windowHours: row.window_hours,
     exactPlace: row.exact_place as string,
     meetDetail: row.meet_detail ?? null,
+    review: row.review ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };

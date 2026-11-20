@@ -6,8 +6,9 @@ import { closeTestDbs, getTestDb, resetDb } from './support/db.js';
 import { fakeToken } from './support/fake-verifier.js';
 import { createLocal, createMedia, insertEvent } from './support/fixtures.js';
 
+// `"review"` is matched as a JSON key: a bare `review` would hit the market status "preview".
 const LEAK =
-  /SECRET-PLACE-123|SECRET-MEET-789|SECRET-ADDR-456|guest@example\.com|claimCode|claim_hash|exactPlace|meetDetail|hostEmail/;
+  /SECRET-PLACE-123|SECRET-MEET-789|SECRET-ADDR-456|guest@example\.com|claimCode|claim_hash|exactPlace|meetDetail|hostEmail|"review"/;
 
 const escape = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -83,6 +84,19 @@ describe('Leak scan (e2e)', () => {
     const guestUpcoming = await insertEvent(db, { status: 'upcoming', guestEmail: 'guest@example.com' });
     upcomingId = upcoming;
     guestUpcomingId = guestUpcoming;
+
+    // Decided review rows, so a `review` key would show up if a public view carried it.
+    const decided = new Date();
+    await db
+      .insertInto('review_items')
+      .values(
+        [
+          { kind: 'drop' as const, ref_id: dropId },
+          { kind: 'event' as const, ref_id: upcoming },
+          { kind: 'event' as const, ref_id: guestUpcoming },
+        ].map((r) => ({ ...r, id: uuidv7(), state: 'approved' as const, submitted_at: decided, decided_at: decided })),
+      )
+      .execute();
 
     // The actual secret values: the claim code just issued and every stored claim hash.
     const hashes = (await db.selectFrom('guest_identities').select('claim_hash').execute()).map((r) => r.claim_hash);
