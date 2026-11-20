@@ -1,5 +1,6 @@
 import type { Kysely, Transaction } from 'kysely';
 import type { Schema } from '../db/schema.js';
+import type { SerializeOptions } from '../media/media-url.js';
 import { latestReview } from '../review/review-summary.js';
 import { type DropRow, type PrivateDropView, serializeDrop } from './drop.serializer.js';
 
@@ -26,6 +27,6 @@ export function ownerDropQuery(db: Kysely<Schema> | Transaction<Schema>) {
 export type OwnerDropView = PrivateDropView;
 
 /** The owner's view of a Drop. Thin wrapper over the one serializer. */
-export function toOwnerView(r: DropRow, now: Date = new Date()): OwnerDropView {
-  return serializeDrop(r, 'owner', now);
+export function toOwnerView(r: DropRow, opts: SerializeOptions = {}, now: Date = new Date()): OwnerDropView {
+  return serializeDrop(r, 'owner', now, opts);
 }

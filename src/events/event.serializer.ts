@@ -2,6 +2,7 @@ import type { Selectable } from 'kysely';
 import { formatInZone } from '../common/time/wall-clock.js';
 import type { EventsTable } from '../db/schema.js';
 import type { Audience } from '../drops/drop.serializer.js';
+import { displayUrl, type SerializeOptions } from '../media/media-url.js';
 import type { ReviewSummary } from '../review/review-summary.js';
 
 type PublicColumns =
@@ -51,7 +52,7 @@ export interface PublicEventView {
   /** Capacity, or null when the host set none. RSVPs arrive in a later phase. */
   spotsLeft: number | null;
   link: string | null;
-  photo: { mediaId: string } | null;
+  photo: { mediaId: string; url?: string } | null;
   host: { name: string; badge: string };
   /** Only when the address visibility is `public`. */
   exactAddress?: string;
@@ -69,15 +70,25 @@ export interface PrivateEventView extends Omit<PublicEventView, 'exactAddress'> 
 
 export type EventView = PublicEventView | PrivateEventView;
 
+function photoOf(mediaId: string, base: string | undefined): { mediaId: string; url?: string } {
+  const url = displayUrl(mediaId, base);
+  return url ? { mediaId, url } : { mediaId };
+}
+
 /**
  * The only mapping from an event row to a response. The public view carries `exactAddress` only
  * when the event's visibility is `public`; owner and reviewer always see the stored address.
  * `now` is accepted for parity with `serializeDrop`; nothing in the view is time-relative yet.
  */
-export function serializeEvent(row: EventRow, audience: 'public', now: Date): PublicEventView;
-export function serializeEvent(row: EventRow, audience: 'owner' | 'reviewer', now: Date): PrivateEventView;
-export function serializeEvent(row: EventRow, audience: Audience, now: Date): EventView;
-export function serializeEvent(row: EventRow, audience: Audience, _now: Date): EventView {
+export function serializeEvent(row: EventRow, audience: 'public', now: Date, opts?: SerializeOptions): PublicEventView;
+export function serializeEvent(
+  row: EventRow,
+  audience: 'owner' | 'reviewer',
+  now: Date,
+  opts?: SerializeOptions,
+): PrivateEventView;
+export function serializeEvent(row: EventRow, audience: Audience, now: Date, opts?: SerializeOptions): EventView;
+export function serializeEvent(row: EventRow, audience: Audience, _now: Date, opts: SerializeOptions = {}): EventView {
   const local = (d: Date) => formatInZone(d, row.market_tz).iso;
   const base: PublicEventView = {
     id: row.id,
@@ -93,7 +104,7 @@ export function serializeEvent(row: EventRow, audience: Audience, _now: Date): E
     area: row.area,
     spotsLeft: row.capacity,
     link: row.link,
-    photo: row.photo_media_id ? { mediaId: row.photo_media_id } : null,
+    photo: row.photo_media_id ? photoOf(row.photo_media_id, opts.mediaBaseUrl) : null,
     host: { name: row.host_name, badge: row.host_badge },
   };
 

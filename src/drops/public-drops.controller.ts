@@ -6,6 +6,8 @@ import { OptionalAuth } from '../auth/roles.decorator.js';
 import { applyCacheHeaders } from '../common/cache-headers.js';
 import { AppError } from '../common/errors/app-error.js';
 import { decodeCursor, encodeCursor, parseLimit } from '../common/pagination.js';
+import { ENV } from '../config/config.module.js';
+import type { Env } from '../config/env.js';
 import { DB } from '../db/tokens.js';
 import type { Schema } from '../db/schema.js';
 import { type DropRow, type DropView, serializeDrop } from './drop.serializer.js';
@@ -20,6 +22,7 @@ export class PublicDropsController {
   constructor(
     private readonly repo: PublicDropsRepository,
     @Inject(DB) private readonly db: Kysely<Schema>,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   @Get()
@@ -40,7 +43,7 @@ export class PublicDropsController {
     });
     const now = new Date();
     return {
-      items: page.rows.map((r) => serializeDrop(r, 'public', now)),
+      items: page.rows.map((r) => serializeDrop(r, 'public', now, this.opts())),
       nextCursor: page.next ? encodeCursor(page.next) : null,
     };
   }
@@ -63,12 +66,16 @@ export class PublicDropsController {
         let q = ownerDropQuery(this.db).where('drops.id', '=', id);
         if (!reviewer) q = q.where('drops.local_id', '=', me.localId as string);
         const row: DropRow | undefined = await q.executeTakeFirst();
-        if (row) return serializeDrop(row, reviewer ? 'reviewer' : 'owner', now);
+        if (row) return serializeDrop(row, reviewer ? 'reviewer' : 'owner', now, this.opts());
       }
     }
 
     const row = await this.repo.findLive(id);
     if (!row) throw new AppError(404, 'not_found');
-    return serializeDrop(row, 'public', now);
+    return serializeDrop(row, 'public', now, this.opts());
+  }
+
+  private opts() {
+    return { mediaBaseUrl: this.env.MEDIA_BASE_URL };
   }
 }

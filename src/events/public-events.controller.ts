@@ -10,6 +10,8 @@ import { AppError } from '../common/errors/app-error.js';
 import { decodeCursor, encodeCursor, parseLimit } from '../common/pagination.js';
 import { resolveWallClock, WallClockError } from '../common/time/wall-clock.js';
 import type { EventCategory, Schema } from '../db/schema.js';
+import { ENV } from '../config/config.module.js';
+import type { Env } from '../config/env.js';
 import { DB } from '../db/tokens.js';
 import { GuestAuthGuard } from '../guests/guest-auth.guard.js';
 import { type EventRow, type EventView, serializeEvent } from './event.serializer.js';
@@ -47,6 +49,7 @@ export class PublicEventsController {
     private readonly guestAuth: GuestAuthGuard,
     private readonly clock: Clock,
     @Inject(DB) private readonly db: Kysely<Schema>,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   @Get()
@@ -92,7 +95,7 @@ export class PublicEventsController {
     });
     const rows = await this.withPublicAddresses(page.rows);
     return {
-      items: rows.map((r) => serializeEvent(r, 'public', now)),
+      items: rows.map((r) => serializeEvent(r, 'public', now, this.opts())),
       nextCursor: page.next ? encodeCursor(page.next) : null,
     };
   }
@@ -110,16 +113,20 @@ export class PublicEventsController {
     const reviewer = Boolean(me && (me.roles.includes('reviewer') || me.roles.includes('admin')));
     if (reviewer) {
       const row = await ownerEventQuery(this.db).where('events.id', '=', id).executeTakeFirst();
-      if (row) return serializeEvent(row, 'reviewer', now);
+      if (row) return serializeEvent(row, 'reviewer', now, this.opts());
     } else {
       const owned = await this.ownedBy(req, id);
-      if (owned) return serializeEvent(owned, 'owner', now);
+      if (owned) return serializeEvent(owned, 'owner', now, this.opts());
     }
 
     const row = await this.repo.findVisible(id, now);
     if (!row) throw new AppError(404, 'not_found');
     const [withAddress] = await this.withPublicAddresses([row]);
-    return serializeEvent(withAddress as EventRow, 'public', now);
+    return serializeEvent(withAddress as EventRow, 'public', now, this.opts());
+  }
+
+  private opts() {
+    return { mediaBaseUrl: this.env.MEDIA_BASE_URL };
   }
 
   /** The event if this caller owns it by account, claim code or manage token. */

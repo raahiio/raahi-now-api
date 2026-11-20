@@ -312,7 +312,7 @@ export class EventsService {
       .orderBy('events.starts_at')
       .orderBy('events.id')
       .execute();
-    return rows.map(toOwnerEventView);
+    return rows.map((r) => toOwnerEventView(r, { mediaBaseUrl: this.env.MEDIA_BASE_URL }));
   }
 
   // ---- internals ----
@@ -356,7 +356,9 @@ export class EventsService {
   }
 
   private async view(db: Executor, id: string): Promise<OwnerEventView> {
-    return toOwnerEventView(await ownerEventQuery(db).where('events.id', '=', id).executeTakeFirstOrThrow());
+    return toOwnerEventView(await ownerEventQuery(db).where('events.id', '=', id).executeTakeFirstOrThrow(), {
+      mediaBaseUrl: this.env.MEDIA_BASE_URL,
+    });
   }
 
   /** Host name and badge for an account: the local profile name when there is one, else the first name. */

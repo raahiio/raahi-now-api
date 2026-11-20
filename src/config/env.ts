@@ -15,6 +15,8 @@ export interface Env {
   JOBS_ENABLED: boolean;
   /** Number of reverse-proxy hops to trust for req.ip. 0 means off. */
   TRUST_PROXY: number;
+  /** Public base URL for media (bucket or CDN). When set, views carry photo.url. */
+  MEDIA_BASE_URL?: string;
 }
 
 const REQUIRED = [
@@ -73,6 +75,7 @@ export function loadEnv(source: Record<string, string | undefined>): Env {
     DEVICE_HASH_SALT: source.DEVICE_HASH_SALT!,
     FIREBASE_PROJECT_ID: source.FIREBASE_PROJECT_ID!,
     TRUST_PROXY: trustProxy,
+    ...(source.MEDIA_BASE_URL ? { MEDIA_BASE_URL: source.MEDIA_BASE_URL } : {}),
     JOBS_ENABLED: source.JOBS_ENABLED === undefined ? true : source.JOBS_ENABLED.toLowerCase() !== 'false',
   };
 }

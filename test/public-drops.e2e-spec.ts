@@ -61,6 +61,20 @@ describe('Public Drops (e2e)', () => {
     return id;
   };
 
+  it('photo.url appears only when MEDIA_BASE_URL is set (public list and detail, owner detail)', async () => {
+    const id = await insert();
+    expect((await t.http.get(`/v1/drops/${id}`).expect(200)).body.photo).not.toHaveProperty('url');
+    const withBase = await createTestApp({ MEDIA_BASE_URL: 'https://cdn.raahi.test' });
+    try {
+      const url = `https://cdn.raahi.test/media/${mediaId}/display.jpg`;
+      expect((await withBase.http.get('/v1/drops').expect(200)).body.items[0].photo.url).toBe(url);
+      expect((await withBase.http.get(`/v1/drops/${id}`).expect(200)).body.photo.url).toBe(url);
+      expect((await withBase.http.get(`/v1/me/drops/${id}`).set(owner.headers).expect(200)).body.photo.url).toBe(url);
+    } finally {
+      await withBase.app.close();
+    }
+  });
+
   it('lists only live, unexpired Drops, newest approval first', async () => {
     const older = await insert({ approvedAt: hours(-3) });
     const newer = await insert({ approvedAt: hours(-1) });

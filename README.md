@@ -47,6 +47,7 @@ In non-production environments the OpenAPI UI is served at `/v1/docs`.
 | `DEVICE_HASH_SALT` | yes | | Salt for hashing device ids and IPs in rate limits |
 | `FIREBASE_PROJECT_ID` | yes | | Firebase project that issues the ID tokens |
 | `JOBS_ENABLED` | no | `true` | `false` disables the sweepers and the outbox relay timers |
+| `MEDIA_BASE_URL` | no | | Public base URL of the media bucket or CDN. When set, Drop and event views carry `photo.url` = `<MEDIA_BASE_URL>/media/<id>/display.jpg`; otherwise `photo.url` is omitted and clients get only `photo.mediaId` |
 | `TRUST_PROXY` | no | `0` | Reverse-proxy hops to trust for the client IP (rate limits, claim lock). `0` is off; use `1` behind one load balancer |
 
 ## Test database

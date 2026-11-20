@@ -62,4 +62,16 @@ describe('serializeDrop', () => {
     expect(v.photo).toEqual({ mediaId: 'm1', isStandIn: false });
     expect(serializeDrop(row({ local_verified_at: null }), 'public', now).local.verified).toBe(false);
   });
+
+  it('photo.url is filled only when a media base URL is given', () => {
+    expect(serializeDrop(row(), 'public', now).photo).toEqual({ mediaId: 'm1', isStandIn: false });
+    expect(serializeDrop(row(), 'public', now, { mediaBaseUrl: 'https://cdn.raahi.test' }).photo).toEqual({
+      mediaId: 'm1',
+      url: 'https://cdn.raahi.test/media/m1/display.jpg',
+      isStandIn: false,
+    });
+    expect(serializeDrop(row(), 'owner', now, { mediaBaseUrl: 'https://cdn.raahi.test/' }).photo.url).toBe(
+      'https://cdn.raahi.test/media/m1/display.jpg',
+    );
+  });
 });

@@ -3,6 +3,8 @@ import type { Kysely, Transaction, Updateable } from 'kysely';
 import { uuidv7 } from 'uuidv7';
 import { AppError } from '../common/errors/app-error.js';
 import type { DropsTable, DropStatus, EventStatus, ReviewKind, ReviewState, Schema } from '../db/schema.js';
+import { ENV } from '../config/config.module.js';
+import type { Env } from '../config/env.js';
 import { DB } from '../db/tokens.js';
 import { nextDropStatus } from '../drops/drop-state.js';
 import { serializeDrop } from '../drops/drop.serializer.js';
@@ -32,6 +34,7 @@ export class ReviewService {
   constructor(
     @Inject(DB) private readonly db: Kysely<Schema>,
     private readonly outbox: OutboxService,
+    @Inject(ENV) private readonly env: Env,
   ) {}
 
   /**
@@ -62,7 +65,7 @@ export class ReviewService {
     const eventIds = rows.filter((r) => r.kind === 'event').map((r) => r.ref_id);
     const drops = new Map(
       dropIds.length
-        ? (await ownerDropQuery(this.db).where('drops.id', 'in', dropIds).execute()).map((d) => [d.id, serializeDrop(d, 'reviewer', new Date())] as const)
+        ? (await ownerDropQuery(this.db).where('drops.id', 'in', dropIds).execute()).map((d) => [d.id, serializeDrop(d, 'reviewer', new Date(), { mediaBaseUrl: this.env.MEDIA_BASE_URL })] as const)
         : [],
     );
     const events = new Map(

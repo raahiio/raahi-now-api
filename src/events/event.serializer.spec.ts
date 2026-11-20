@@ -66,4 +66,17 @@ describe('serializeEvent', () => {
     }
     expect(serializeEvent(row({ exact_address: null }), 'owner', now).exactAddress).toBeNull();
   });
+
+  it('photo.url is filled only when a media base URL is given', () => {
+    const opts = { mediaBaseUrl: 'https://cdn.raahi.test' };
+    expect(serializeEvent(row({ photo_media_id: 'm1' }), 'public', now).photo).toEqual({ mediaId: 'm1' });
+    expect(serializeEvent(row({ photo_media_id: 'm1' }), 'public', now, opts).photo).toEqual({
+      mediaId: 'm1',
+      url: 'https://cdn.raahi.test/media/m1/display.jpg',
+    });
+    expect(serializeEvent(row({ photo_media_id: 'm1' }), 'owner', now, opts).photo?.url).toBe(
+      'https://cdn.raahi.test/media/m1/display.jpg',
+    );
+    expect(serializeEvent(row(), 'public', now, opts).photo).toBeNull();
+  });
 });

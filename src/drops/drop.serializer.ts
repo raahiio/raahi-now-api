@@ -1,5 +1,6 @@
 import type { Selectable } from 'kysely';
 import type { DropsTable } from '../db/schema.js';
+import { displayUrl, type SerializeOptions } from '../media/media-url.js';
 import type { ReviewSummary } from '../review/review-summary.js';
 
 export type Audience = 'public' | 'owner' | 'reviewer';
@@ -49,10 +50,16 @@ export interface PrivateDropView extends PublicDropView {
 export type DropView = PublicDropView | PrivateDropView;
 
 /** The only mapping from a Drop row to a response. The public view never carries private keys. */
-export function serializeDrop(row: DropRow, audience: 'public', now: Date): PublicDropView;
-export function serializeDrop(row: DropRow, audience: 'owner' | 'reviewer', now: Date): PrivateDropView;
-export function serializeDrop(row: DropRow, audience: Audience, now: Date): DropView;
-export function serializeDrop(row: DropRow, audience: Audience, _now: Date): DropView {
+export function serializeDrop(row: DropRow, audience: 'public', now: Date, opts?: SerializeOptions): PublicDropView;
+export function serializeDrop(
+  row: DropRow,
+  audience: 'owner' | 'reviewer',
+  now: Date,
+  opts?: SerializeOptions,
+): PrivateDropView;
+export function serializeDrop(row: DropRow, audience: Audience, now: Date, opts?: SerializeOptions): DropView;
+export function serializeDrop(row: DropRow, audience: Audience, _now: Date, opts: SerializeOptions = {}): DropView {
+  const url = displayUrl(row.photo_media_id, opts.mediaBaseUrl);
   const view: PublicDropView = {
     id: row.id,
     title: row.title,
@@ -62,7 +69,7 @@ export function serializeDrop(row: DropRow, audience: Audience, _now: Date): Dro
     timeMinutes: row.time_minutes,
     bestTime: row.best_time,
     watchOut: row.watch_out,
-    photo: { mediaId: row.photo_media_id, isStandIn: row.photo_is_stand_in },
+    photo: { mediaId: row.photo_media_id, ...(url ? { url } : {}), isStandIn: row.photo_is_stand_in },
     market: { id: row.market_id, city: row.market_city, tz: row.market_tz },
     fuzzyArea: row.fuzzy_area,
     unlockPriceCredits: row.unlock_price_minor / 100,

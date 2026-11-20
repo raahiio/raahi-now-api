@@ -1,5 +1,6 @@
 import type { Kysely, Transaction } from 'kysely';
 import type { Schema } from '../db/schema.js';
+import type { SerializeOptions } from '../media/media-url.js';
 import { latestReview } from '../review/review-summary.js';
 import { type PrivateEventView, serializeEvent } from './event.serializer.js';
 
@@ -23,8 +24,8 @@ export function ownerEventQuery(db: Executor) {
 export type OwnerEventRow = Awaited<ReturnType<ReturnType<typeof ownerEventQuery>['executeTakeFirstOrThrow']>>;
 
 /** The owner's JSON. Delegates to the one event mapping, `serializeEvent`. */
-export function toOwnerEventView(row: OwnerEventRow): PrivateEventView {
-  return serializeEvent(row, 'owner', new Date());
+export function toOwnerEventView(row: OwnerEventRow, opts: SerializeOptions = {}): PrivateEventView {
+  return serializeEvent(row, 'owner', new Date(), opts);
 }
 
 export type OwnerEventView = PrivateEventView;

@@ -5,6 +5,8 @@ import type { CurrentUser } from '../auth/current-user.decorator.js';
 import { AppError, ValidationFailedError, type ValidationIssue } from '../common/errors/app-error.js';
 import { messageFor } from '../common/errors/messages.js';
 import { fuzzyRepeatsExactPlace, mentionsExactPlace } from '../common/validation/exact-place.js';
+import { ENV } from '../config/config.module.js';
+import type { Env } from '../config/env.js';
 import { DB } from '../db/tokens.js';
 import type { DropPrivateTable, DropsTable, Schema } from '../db/schema.js';
 import { MarketsService } from '../markets/markets.service.js';
@@ -38,7 +40,12 @@ export class DropsService {
     private readonly markets: MarketsService,
     private readonly outbox: OutboxService,
     private readonly review: ReviewService,
+    @Inject(ENV) private readonly env: Env,
   ) {}
+
+  private viewOpts() {
+    return { mediaBaseUrl: this.env.MEDIA_BASE_URL };
+  }
 
   async create(me: CurrentUser, dto: CreateDropDto): Promise<OwnerDropView> {
     const localId = me.localId as string;
@@ -219,7 +226,7 @@ export class DropsService {
       .orderBy('drops.created_at', 'desc')
       .orderBy('drops.id', 'desc')
       .execute();
-    return rows.map((r) => toOwnerView(r));
+    return rows.map((r) => toOwnerView(r, this.viewOpts()));
   }
 
   async getMine(me: CurrentUser, id: string): Promise<OwnerDropView> {
@@ -229,7 +236,7 @@ export class DropsService {
       .where('drops.local_id', '=', me.localId as string)
       .executeTakeFirst();
     if (!row) throw new AppError(404, 'not_found');
-    return toOwnerView(row);
+    return toOwnerView(row, this.viewOpts());
   }
 
   // ---- internals ----
@@ -274,7 +281,7 @@ export class DropsService {
 
   private async view(db: Executor, id: string): Promise<OwnerDropView> {
     const row = await this.ownerQuery(db).where('drops.id', '=', id).executeTakeFirstOrThrow();
-    return toOwnerView(row);
+    return toOwnerView(row, this.viewOpts());
   }
 
   /** The photo must be a ready upload of the caller; the market must exist. Both come back as field errors. */

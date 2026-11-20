@@ -40,6 +40,11 @@ describe('loadEnv', () => {
     expect(loadEnv({ ...validEnv, SES_REGION: 'us-east-1' }).SES_REGION).toBe('us-east-1');
   });
 
+  it('loadEnv reads the optional MEDIA_BASE_URL', () => {
+    expect(loadEnv({ ...validEnv }).MEDIA_BASE_URL).toBeUndefined();
+    expect(loadEnv({ ...validEnv, MEDIA_BASE_URL: 'https://cdn.raahi.test' }).MEDIA_BASE_URL).toBe('https://cdn.raahi.test');
+  });
+
   it('loadEnv parses TRUST_PROXY as a hop count, defaults to 0 and rejects bad values', () => {
     expect(loadEnv({ ...validEnv }).TRUST_PROXY).toBe(0);
     expect(loadEnv({ ...validEnv, TRUST_PROXY: '2' }).TRUST_PROXY).toBe(2);
