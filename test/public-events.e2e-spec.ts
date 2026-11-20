@@ -254,15 +254,15 @@ describe('Public events (e2e)', () => {
     expect((await t.http.get('/v1/events?limit=51').expect(422)).body.code).toBe('limit.range');
   });
 
-  it('anonymous responses are public, max-age=15 with Vary: Authorization; authenticated ones are private, no-store', async () => {
+  it('anonymous responses are public, max-age=15 with Vary: Authorization, X-Claim-Code; authenticated ones are private, no-store', async () => {
     const id = await insert();
     for (const path of ['/v1/events', `/v1/events/${id}`]) {
       const anon = await t.http.get(path).expect(200);
       expect(anon.headers['cache-control']).toBe('public, max-age=15');
-      expect(anon.headers.vary).toMatch(/Authorization/);
+      expect(anon.headers.vary).toBe('Authorization, X-Claim-Code');
       const authed = await t.http.get(path).set(host.headers).expect(200);
       expect(authed.headers['cache-control']).toBe('private, no-store');
-      expect(authed.headers.vary).toMatch(/Authorization/);
+      expect(authed.headers.vary).toBe('Authorization, X-Claim-Code');
     }
   });
 

@@ -187,10 +187,10 @@ describe('Public Drops (e2e)', () => {
     for (const path of ['/v1/drops', `/v1/drops/${id}`]) {
       const anon = await t.http.get(path).expect(200);
       expect(anon.headers['cache-control']).toBe('public, max-age=15');
-      expect(anon.headers['vary']).toMatch(/Authorization/);
+      expect(anon.headers['vary']).toBe('Authorization, X-Claim-Code');
       const authed = await t.http.get(path).set(owner.headers).expect(200);
       expect(authed.headers['cache-control']).toBe('private, no-store');
-      expect(authed.headers['vary']).toMatch(/Authorization/);
+      expect(authed.headers['vary']).toBe('Authorization, X-Claim-Code');
     }
   });
 

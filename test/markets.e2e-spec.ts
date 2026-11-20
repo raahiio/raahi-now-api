@@ -39,19 +39,19 @@ describe('Markets (e2e)', () => {
     });
   });
 
-  it('anonymous list responses are publicly cacheable and vary on Authorization', async () => {
+  it('anonymous list responses are publicly cacheable and vary on Authorization and X-Claim-Code', async () => {
     const res = await t.http.get('/v1/markets').expect(200);
     expect(res.headers['cache-control']).toBe('public, max-age=15');
-    expect(res.headers['vary']).toBe('Authorization');
+    expect(res.headers['vary']).toBe('Authorization, X-Claim-Code');
   });
 
-  it('authenticated list responses are private and not stored, still vary on Authorization', async () => {
+  it('authenticated list responses are private and not stored, still vary on Authorization and X-Claim-Code', async () => {
     const res = await t.http
       .get('/v1/markets')
       .set('Authorization', fakeToken({ uid: 'm1', email: 'm1@example.com' }))
       .expect(200);
     expect(res.headers['cache-control']).toBe('private, no-store');
-    expect(res.headers['vary']).toBe('Authorization');
+    expect(res.headers['vary']).toBe('Authorization, X-Claim-Code');
   });
 
   it('require() returns a known market', async () => {
