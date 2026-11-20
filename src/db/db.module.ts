@@ -1,6 +1,7 @@
 import {
   Global,
   Inject,
+  Logger,
   Module,
   type OnApplicationShutdown,
 } from '@nestjs/common';
@@ -11,10 +12,14 @@ import type { Env } from '../config/env.js';
 import type { Schema } from './schema.js';
 import { DB, PUBLIC_DB } from './tokens.js';
 
-function createDb(connectionString: string): Kysely<Schema> {
-  return new Kysely<Schema>({
-    dialect: new PostgresDialect({ pool: new pg.Pool({ connectionString }) }),
-  });
+const logger = new Logger('DbModule');
+
+function createDb(connectionString: string, name: string): Kysely<Schema> {
+  const pool = new pg.Pool({ connectionString });
+  // An idle client that loses its connection emits 'error' on the pool; unhandled, it kills the process.
+  // Only the message is logged: the error object can carry connection details.
+  pool.on('error', (err) => logger.error(`${name} pool error: ${err.message}`));
+  return new Kysely<Schema>({ dialect: new PostgresDialect({ pool }) });
 }
 
 @Global()
@@ -23,12 +28,12 @@ function createDb(connectionString: string): Kysely<Schema> {
     {
       provide: DB,
       inject: [ENV],
-      useFactory: (env: Env) => createDb(env.DATABASE_URL),
+      useFactory: (env: Env) => createDb(env.DATABASE_URL, 'app'),
     },
     {
       provide: PUBLIC_DB,
       inject: [ENV],
-      useFactory: (env: Env) => createDb(env.DATABASE_PUBLIC_URL),
+      useFactory: (env: Env) => createDb(env.DATABASE_PUBLIC_URL, 'public'),
     },
   ],
   exports: [DB, PUBLIC_DB],
