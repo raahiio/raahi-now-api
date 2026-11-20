@@ -31,9 +31,9 @@ export const link = (): PropertyDecorator =>
   applyDecorators(ApiProperty({ type: String }), IsString({ message: 'link.invalid' }), HttpsNoShortener());
 
 export const nameField = () => text('name', 5, 80, { contact: true });
-export const descriptionField = () => text('description', 20, 600);
-export const areaField = () => text('area', 2, 80);
-export const dateNoteField = () => text('dateNote', 2, 60);
+export const descriptionField = () => text('description', 20, 600, { contact: true });
+export const areaField = () => text('area', 2, 80, { contact: true });
+export const dateNoteField = () => text('dateNote', 2, 60, { contact: true });
 export const exactAddressField = () => text('exactAddress', 5, 160);
 export const capacityField = () => whole('capacity', 1, 500);
 export const photoField = () => idField('photoMediaId');

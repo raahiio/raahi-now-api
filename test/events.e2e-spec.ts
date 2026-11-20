@@ -50,6 +50,23 @@ describe('Events, account host (e2e)', () => {
     return { userId, headers: { Authorization: fakeToken({ uid }) } };
   };
 
+  it('contact details in description, area or dateNote are 422 text.contact_details', async () => {
+    const cases: [string, string][] = [
+      ['description', 'A relaxed walk, message me on 555 123 4567 to join.'],
+      ['description', 'A relaxed walk through town, details at walks.example.com'],
+      ['area', 'Chinatown @hostwalks'],
+      ['dateNote', 'Email me at host@example.com'],
+    ];
+    for (const [field, value] of cases) {
+      const res = await post({ [field]: value }).expect(422);
+      expect(firstError(res), `${field}: ${value}`).toMatchObject({
+        code: 'text.contact_details',
+        field,
+        message: 'Keep phone numbers, emails and links out of this field.',
+      });
+    }
+  });
+
   it('a first-time host creates a pending event, a review item and an event.submitted outbox row', async () => {
     const res = await post().expect(201);
     expect(res.body).toMatchObject({
