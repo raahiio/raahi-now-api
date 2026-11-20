@@ -52,6 +52,23 @@ export class GuestAuthGuard implements CanActivate {
     return true;
   }
 
+  /**
+   * Read-path variant for public GETs: does this request's guest credential open `eventId`?
+   * A missing, wrong or locked credential is simply anonymous (null). It never records a
+   * failure, so a stray header on a GET cannot lock anyone out.
+   */
+  async peek(req: Request, eventId: string): Promise<ClaimedEvent | null> {
+    const hasCredential = Boolean(header(req, 'x-claim-code')) || MANAGE.test(req.headers.authorization?.trim() ?? '');
+    if (!hasCredential) return null;
+    try {
+      await this.guests.assertNotLocked(callerKeys(req, this.env.DEVICE_HASH_SALT));
+    } catch (err) {
+      if (err instanceof AppError) return null;
+      throw err;
+    }
+    return this.authenticate(req, eventId);
+  }
+
   private async authenticate(req: Request, eventId: string): Promise<ClaimedEvent | null> {
     if (!UUID.test(eventId)) return null;
 
