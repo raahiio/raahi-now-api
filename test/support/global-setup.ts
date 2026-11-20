@@ -8,6 +8,13 @@ import {
 } from './urls.js';
 
 export default async function setup(): Promise<void> {
+  // This setup drops schema public. Refuse anything that is not clearly a throwaway test database.
+  const dbName = decodeURIComponent(new URL(testDatabaseUrl()).pathname.slice(1));
+  if (!dbName.endsWith('_test')) {
+    throw new Error(
+      `Refusing to reset database "${dbName}": TEST_DATABASE_URL must name a database ending in _test.`,
+    );
+  }
   const db = new Kysely<unknown>({
     dialect: new PostgresDialect({
       pool: new pg.Pool({ connectionString: testDatabaseUrl() }),
