@@ -6,11 +6,25 @@ The binding spec is `docs/superpowers/specs/2026-11-19-raahi-now-phase1-spec.md`
 
 ## Setup
 
-Requires Node 22 or newer.
+Requires Node 22.9 or newer (the start scripts use `--env-file-if-exists`).
 
 ```
-cp .env.example .env
-npm install        # .npmrc sets legacy-peer-deps=true; CI uses npm ci --legacy-peer-deps
+cp .env.example .env   # the start and db:migrate scripts load .env when it exists
+npm install            # .npmrc sets legacy-peer-deps=true; CI uses npm ci --legacy-peer-deps
+npm run db:test        # optional: embedded PostgreSQL 16 on 5432 with a raahi_now database (leave it running)
+npm run db:migrate     # creates the tables and the raahi_public_read group role in DATABASE_URL
+```
+
+The migration creates `raahi_public_read` as a group role without login. The public GET endpoints connect as a separate login role that belongs to it. Create that role once, as a superuser, with a password of your own:
+
+```sql
+CREATE ROLE raahi_public LOGIN PASSWORD 'raahi_public';
+GRANT raahi_public_read TO raahi_public;
+```
+
+`DATABASE_PUBLIC_URL` connects as that login role (`raahi_public` in `.env.example`), never as the `NOLOGIN` group role `raahi_public_read`. Then start the API:
+
+```
 npm run start:dev
 ```
 
@@ -23,7 +37,7 @@ In non-production environments the OpenAPI UI is served at `/v1/docs`.
 | `NODE_ENV` | no | `development` | `production` turns off `/v1/docs` |
 | `PORT` | no | `3000` | HTTP port |
 | `DATABASE_URL` | yes | | Read/write PostgreSQL connection |
-| `DATABASE_PUBLIC_URL` | yes | | Connection as the `raahi_public_read` role, used by the public GET endpoints |
+| `DATABASE_PUBLIC_URL` | yes | | Connection as a login role that is a member of `raahi_public_read` (for example `raahi_public`), used by the public GET endpoints |
 | `S3_BUCKET` | yes | | Bucket for uploaded images |
 | `S3_REGION` | yes | | AWS region of the bucket and SES |
 | `SES_FROM` | yes | | Sender address for claim-code emails |
@@ -51,7 +65,8 @@ Then set `TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5432/raahi_no
 | `TEST_DATABASE_URL=... npm run test:e2e` | End-to-end specs against the test database |
 | `npm run lint` | oxlint with type-aware rules |
 | `npm run build` | Compile to `dist/` |
-| `npm run start:prod` | Run the compiled app |
+| `npm run start:prod` | Run the compiled app (loads `.env` when it exists) |
+| `npm run db:migrate` | Apply pending migrations to `DATABASE_URL` (loads `.env` when it exists) |
 | `npm run openapi` | Write `openapi.json` (git-ignored). Needs no database |
 | `npm run db:test` | Start the embedded test PostgreSQL |
 
@@ -65,7 +80,7 @@ src/
   common/    errors, validation, pagination, rate limits, clock, cache headers
   auth/      Firebase ID token guard, roles, user lookup
   ...        one folder per module (below)
-scripts/     test-db.mjs, openapi.ts
+scripts/     test-db.mjs, openapi.ts, migrate.ts
 test/        e2e specs and support (fixtures, fakes)
 ```
 
