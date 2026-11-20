@@ -10,7 +10,9 @@
 
 The workflow changes only the image. Roles, environment variables, secrets, CPU and memory stay in the task definition you manage in AWS.
 
-The workflow does not create any AWS resources. Everything below must exist first, ideally from CDK or CloudFormation.
+The workflow does not create any AWS resources. Everything below must exist first.
+
+For nonprod (`https://now-dev.raahi.io`), all of it already exists. It is defined in Terraform in the RAAHI infra folder, `infra/terraform/ecs-nonprod/now_api.tf`. `terraform output now_github_environment_variables` prints the GitHub variables. The task definition there is the source of truth: the workflow copies its latest revision and only swaps the image, so after changing an env var, `terraform apply` and then re-run this workflow. The service is created at 0 tasks; the first successful deploy scales it to 1.
 
 ## AWS resources
 

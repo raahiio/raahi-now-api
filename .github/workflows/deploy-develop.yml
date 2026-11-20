@@ -83,9 +83,12 @@ jobs:
             exit 1
           fi
 
-          # Start from the task definition the service runs now, so roles, secrets, env vars
-          # and sizing stay owned by the infrastructure. Only the image changes.
-          aws ecs describe-task-definition --task-definition "$current" \
+          # Start from the latest revision of the service's task definition family, so roles,
+          # secrets, env vars and sizing stay owned by Terraform (infra/terraform/ecs-nonprod).
+          # Only the image changes. A Terraform change to the family is picked up on the next run.
+          family=$(aws ecs describe-task-definition --task-definition "$current" \
+            --query taskDefinition.family --output text)
+          aws ecs describe-task-definition --task-definition "$family" \
             --query taskDefinition --output json > current-taskdef.json
           if ! jq -e --arg c "$CONTAINER_NAME" '.containerDefinitions[] | select(.name == $c)' current-taskdef.json > /dev/null; then
             echo "::error::Container '$CONTAINER_NAME' is not in $current. Set ECS_CONTAINER_NAME."
@@ -142,8 +145,11 @@ jobs:
         env:
           TASK_DEF: ${{ steps.taskdef.outputs.arn }}
         run: |
+          # Terraform creates the service at 0 tasks (no image yet); the first deploy scales it to 1.
+          scale=()
+          if [ "$(jq -r '.desiredCount' service.json)" = "0" ]; then scale=(--desired-count 1); fi
           aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
-            --task-definition "$TASK_DEF" --query 'service.serviceName' --output text
+            --task-definition "$TASK_DEF" "${scale[@]}" --query 'service.serviceName' --output text
           echo "Waiting for the service to become stable..."
           aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
 
