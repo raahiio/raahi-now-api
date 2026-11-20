@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "rootDir": ".", "outDir": "./dist-openapi", "incremental": false, "declaration": false },
+  "include": ["src", "scripts"],
+  "exclude": ["node_modules", "test", "dist", "dist-openapi", "**/*spec.ts"]
+}

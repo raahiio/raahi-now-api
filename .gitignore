@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.env
+.pgdata/
+*.log
+.DS_Store
+*.tsbuildinfo
+dist-openapi/
+openapi.json
